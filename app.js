@@ -62,6 +62,7 @@ function applyRemoteState(remoteState) {
 function handleRemoteEvent(event) {
   if (!event) return;
   if (event.type === "cue:go") {
+    state.cueStates[event.cueId] = "go";
     state.flashCueId = event.cueId;
     addLog("GO", `${event.cueId.toUpperCase()} received`);
     render();
@@ -72,6 +73,7 @@ function handleRemoteEvent(event) {
       }
     }, 1800);
   } else if (event.type === "scene:select") {
+    state.cueStates = {};
     addLog("SYSTEM", "Scene changed by show caller");
   } else if (event.type === "show:hold") {
     addLog("ALERT", event.value ? "SHOW HOLD received" : "Show resumed");
