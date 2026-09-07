@@ -105,6 +105,60 @@ const scenes = [
       { character: "Ruth", line: "Where you die, I will die." },
       { character: "Naomi", line: "So do I." }
     ]
+  },
+  {
+    act: 2, number: 1, title: "Doing Business", mics: ["Mayor", "Zilman", "Boaz", "Naomi", "Townspeople"],
+    set: ["Bethville council area", "Elders gather semicircle", "Naomi enters returning from Moab"],
+    lighting: [
+      { cue: 33, description: "Full stage" },
+      { cue: 34, description: "Main stage fade, centre catwalk on Naomi" },
+      { cue: 35, description: "Blackout" },
+      { cue: 36, description: "Blackout" }
+    ],
+    audio: [],
+    music: [
+      { item: "Country Intro", title: "Country music instrumental" },
+      { item: "Vamp", title: "Slow Achy Breaky Heart vamp" }
+    ],
+    screens: [{ type: "cyc", file: "Bethville_CYC.png" }],
+    script: [
+      { character: "Mayor", line: "It is now the third hour… the Council is called to meet." },
+      { character: "Zilman", line: "The business for today is abundantly clear my friends." },
+      { character: "Boaz", line: "I… have something to say." },
+      { character: "Mayor", line: "All those in favour raise your hats." },
+      { character: "Naomi", line: "Old friends. Don’t call me Sweet. My life in Moab has turned bitter." },
+      { character: "Naomi", line: "Call me Mara now. Call me… Mara." }
+    ]
+  },
+  {
+    act: 2, number: 2, title: "A Distraction", mics: ["Ticca", "Boaz", "Ruth", "Naomi", "Workers"],
+    set: ["Boaz’s property", "Cornfields", "Year 4 ready backstage"],
+    lighting: [
+      { cue: 37, description: "SL extension, afternoon/evening full stage" },
+      { cue: 38, description: "Full stage lights up" }
+    ],
+    audio: [{ cue: "Piano Bits", description: "Worker pop-up stings" }],
+    music: [],
+    screens: [{ type: "cyc", file: "BoazProperty_CYC.png" }],
+    script: [
+      { character: "Ticca", line: "Welcome home Mr Boaz, Sir. How did things go at the council?" },
+      { character: "Boaz", line: "Oh, same as ever Ticca, same as ever!" },
+      { character: "Ticca", line: "Ahh… there’s been a distraction Sir." },
+      { character: "Worker 1", line: "She’s amazing." },
+      { character: "Worker 2", line: "Hurley Burley!" },
+      { character: "Worker 3", line: "What an angel." },
+      { character: "Boaz", line: "Who is that girl?" },
+      { character: "Ticca", line: "Girl? Ahh, that’s Ruth sir. Ruth!" }
+    ]
+  },
+  {
+    act: 3, number: 1, title: "Boaz Notices Ruth", mics: ["Boaz", "Ticca", "Ruth", "Workers"],
+    set: ["Boaz’s property", "Workers in barley fields", "Ruth gleaning"],
+    lighting: [{ cue: 39, description: "Warm afternoon tones on field" }],
+    audio: [],
+    music: [],
+    screens: [{ type: "cyc", file: "BoazProperty_CYC.png" }],
+    script: [{ character: "Boaz", line: "Find out about her!" }]
   }
 ];
 
@@ -190,6 +244,8 @@ function connectSocket() {
         if (payload.type === "admin:update" && state.user?.username === "luke") {
           state.adminData = payload.data;
           if (state.role === "admin") render();
+        } else if (payload.type === "admin:logout-all") {
+          addLog("ADMIN", "You were signed out by Luke");
         } else if (payload.type === "event") {
           handleRemoteEvent(payload.event);
         } else if (payload.type === "state:init" || payload.type === "state:update") {
@@ -304,7 +360,18 @@ function bindEvents() {
     else { addLog("ALERT", "Screens frozen"); }
     render();
   }));
-  document.querySelectorAll("[data-admin-action=\"logout-all\"]").forEach((button) => button.addEventListener("click", () => { sendEvent({ type: "admin:logout-all" }); addLog("ADMIN", "All other stations signed out"); renderLog(); }));
+  document.querySelectorAll("[data-admin-action=\"logout-all\"]").forEach((button) => button.addEventListener("click", () => {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      addLog("ERROR", "Admin action unavailable while offline");
+      renderLog();
+      return;
+    }
+    button.disabled = true;
+    button.textContent = "SIGNING OUT…";
+    sendEvent({ type: "admin:logout-all" });
+    addLog("ADMIN", "All other stations signed out");
+    renderLog();
+  }));
   const ready = $("[data-ready]"); if (ready) ready.addEventListener("click", () => { addLog("READY", "Backstage set marked ready"); renderLog(); ready.textContent = "SET READY ✓"; });
 }
 
