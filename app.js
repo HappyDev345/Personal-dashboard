@@ -96,7 +96,7 @@ if (socket) {
 
 function renderScenes() {
   $("#scene-list").innerHTML = scenes.map((scene, index) => `
-    <button class="scene-button ${index === state.sceneIndex ? "active" : ""}" data-scene="${index}">
+    <button class="scene-button ${index === state.sceneIndex ? "active" : ""}" data-scene="${index}" ${state.role === "caller" ? "" : "disabled"}>
       <span class="scene-number">${scene.act}.${scene.number}</span>
       <span><strong>Scene ${scene.number}</strong><small>${scene.title}</small></span>
     </button>`).join("");
@@ -110,18 +110,21 @@ function renderScenes() {
   }));
 }
 
-function cueRows(items, type, idPrefix = type) {
+function cueRows(items, type, idPrefix = type, interactive = true) {
   return items.map((item, index) => {
     const id = `${idPrefix}-${index}`;
     const stateName = state.cueStates[id] || "standby";
     const name = item.description || item.item || item.file;
     const label = item.cue || item.type?.toUpperCase() || type.toUpperCase();
     const lightingGo = state.role === "lighting" && stateName === "go";
+    const controls = interactive
+      ? `<button class="${lightingGo ? "go-now-button" : "small-button"}" ${lightingGo ? "disabled" : ""} data-standby="${id}">${lightingGo ? "GO NOW" : "STBY"}</button><button class="go-button" ${state.hold ? "disabled" : ""} data-go="${id}">GO</button>`
+      : `<span class="cue-received">${stateName === "go" ? "RECEIVED" : "AWAITING GO"}</span>`;
     return `<div class="cue-row ${state.flashCueId === id ? "cue-row-flash" : ""}">
       <span class="cue-stripe ${type}"></span>
       <div><div class="cue-meta">${label}</div><div class="cue-name">${name}</div></div>
       <div class="cue-actions"><span class="cue-status ${stateName}">${stateName}</span>
-      <button class="${lightingGo ? "go-now-button" : "small-button"}" ${lightingGo ? "disabled" : ""} data-standby="${id}">${lightingGo ? "GO NOW" : "STBY"}</button><button class="go-button" ${state.hold ? "disabled" : ""} data-go="${id}">GO</button></div>
+      ${controls}</div>
     </div>`;
   }).join("");
 }
@@ -142,11 +145,11 @@ function emergencyPanel() {
 }
 
 function specialistView(scene) {
-  if (state.role === "lighting") return `<div class="panel"><div class="panel-header"><h2>Lighting cue stack</h2><span class="next-cue">${state.flashCueId ? "GO NOW" : "GO indicators enabled"}</span></div><div class="panel-body"><div class="cue-list">${cueRows(scene.lighting, "lighting")}</div></div></div>${statsPanel(scene)}`;
-  if (state.role === "audio") return `<div class="panel"><div class="panel-header"><h2>Mic grid</h2><span class="next-cue">Scene ${scene.act}.${scene.number}</span></div><div class="panel-body"><div class="mic-grid">${scene.mics.map((mic) => `<div class="mic-card"><div><strong>${mic}</strong><small>Mic ${scene.mics.indexOf(mic) + 1} · ${state.micStates[mic] === false ? "OFF" : "ON"}</small></div><button class="toggle ${state.micStates[mic] !== false ? "on" : ""}" data-mic="${mic}" aria-label="Toggle ${mic} microphone"></button></div>`).join("")}</div></div></div><div class="panel"><div class="panel-header"><h2>Audio & music</h2></div><div class="panel-body"><div class="cue-list">${cueRows(scene.audio, "audio")}</div><div style="height:10px"></div><div class="media-card"><div><div class="media-title">${scene.music[0].item}</div><small>${scene.music[0].source}</small></div><button class="play-button" data-play>▶</button></div></div></div>`;
-  if (state.role === "backstage") return `<div class="panel"><div class="panel-header"><h2>Set change checklist</h2><span class="next-cue">Transition in 00:42</span></div><div class="panel-body"><div class="checklist">${scene.set.map((item, index) => `<label class="check-item ${state.checklist[index] ? "done" : ""}"><input type="checkbox" data-check="${index}" ${state.checklist[index] ? "checked" : ""}>${item}</label>`).join("")}</div><button class="ready-button" data-ready style="margin-top:15px;width:100%">MARK SET READY</button></div></div>${statsPanel(scene)}`;
-  if (state.role === "screens") return `<div class="panel"><div class="panel-header"><h2>Screen control</h2><span class="next-cue">Auto-advance on</span></div><div class="panel-body"><div class="media-card"><div><div class="media-title">${scene.screens[0].file}</div><small>${scene.screens[0].type.toUpperCase()} · Scene ${scene.act}.${scene.number}</small></div><button class="play-button" data-play>▶</button></div><div class="cue-list" style="margin-top:12px">${cueRows(scene.screens, "screens")}</div></div></div><div class="panel"><div class="panel-header"><h2>CYC background</h2></div><div class="panel-body"><div class="stat-grid"><div class="stat"><strong>BLUE</strong><span>current wash</span></div><div class="stat"><strong>3</strong><span>presets ready</span></div></div></div></div>`;
-  return `<div class="panel full-width"><div class="panel-header"><h2>Director overview</h2><span class="next-cue">Rehearsal mode available</span></div><div class="panel-body"><div class="stat-grid"><div class="stat"><strong>${scene.lighting.length + scene.audio.length}</strong><span>active cues</span></div><div class="stat"><strong>${scene.mics.length}</strong><span>actors mic'd</span></div><div class="stat"><strong>LIVE</strong><span>show status</span></div><div class="stat"><strong>4</strong><span>stations online</span></div></div><textarea class="notes" placeholder="Add rehearsal notes..."></textarea></div></div>${emergencyPanel()}`;
+  if (state.role === "lighting") return `<div class="panel"><div class="panel-header"><h2>Lighting cue feed</h2><span class="next-cue">${state.flashCueId ? "GO NOW" : "LISTENING FOR CALLER"}</span></div><div class="panel-body"><div class="crew-notice">Watch this panel for the caller's GO. No local controls are required.</div><div class="cue-list">${cueRows(scene.lighting, "lighting", "lighting", false)}</div></div></div>${statsPanel(scene)}`;
+  if (state.role === "audio") return `<div class="panel"><div class="panel-header"><h2>Audio status</h2><span class="next-cue">LISTENING FOR CALLER</span></div><div class="panel-body"><div class="crew-notice">Mic and playback status is informational. The show caller controls cues.</div><div class="mic-grid">${scene.mics.map((mic) => `<div class="mic-card"><div><strong>${mic}</strong><small>Mic ${scene.mics.indexOf(mic) + 1} · ${state.micStates[mic] === false ? "OFF" : "ON"}</small></div><span class="status-pill ${state.micStates[mic] !== false ? "on" : "off"}">${state.micStates[mic] !== false ? "ON" : "OFF"}</span></div>`).join("")}</div></div></div><div class="panel"><div class="panel-header"><h2>Audio & music feed</h2></div><div class="panel-body"><div class="cue-list">${cueRows(scene.audio, "audio", "audio", false)}</div><div style="height:10px"></div><div class="media-card"><div><div class="media-title">${scene.music[0].item}</div><small>${scene.music[0].source}</small></div><span class="status-pill">CALLER CONTROLLED</span></div></div></div>`;
+  if (state.role === "backstage") return `<div class="panel"><div class="panel-header"><h2>Set change status</h2><span class="next-cue">WAIT FOR CALLER</span></div><div class="panel-body"><div class="crew-notice">Complete the set change when called, then report readiness to the caller.</div><div class="checklist">${scene.set.map((item, index) => `<div class="check-item ${state.checklist[index] ? "done" : ""}"><span class="check-indicator">${state.checklist[index] ? "✓" : "—"}</span>${item}</div>`).join("")}</div></div></div>${statsPanel(scene)}`;
+  if (state.role === "screens") return `<div class="panel"><div class="panel-header"><h2>Screen cue feed</h2><span class="next-cue">LISTENING FOR CALLER</span></div><div class="panel-body"><div class="crew-notice">Media playback is controlled by the show caller.</div><div class="media-card"><div><div class="media-title">${scene.screens[0].file}</div><small>${scene.screens[0].type.toUpperCase()} · Scene ${scene.act}.${scene.number}</small></div><span class="status-pill">CALLER CONTROLLED</span></div><div class="cue-list" style="margin-top:12px">${cueRows(scene.screens, "screens", "screens", false)}</div></div></div><div class="panel"><div class="panel-header"><h2>CYC background</h2></div><div class="panel-body"><div class="stat-grid"><div class="stat"><strong>BLUE</strong><span>current wash</span></div><div class="stat"><strong>3</strong><span>presets ready</span></div></div></div></div>`;
+  return `<div class="panel full-width"><div class="panel-header"><h2>Director overview</h2><span class="next-cue">READ-ONLY SHOW MONITOR</span></div><div class="panel-body"><div class="crew-notice">The show caller controls all cues and emergency actions. This view monitors the live system.</div><div class="stat-grid"><div class="stat"><strong>${scene.lighting.length + scene.audio.length}</strong><span>active cues</span></div><div class="stat"><strong>${scene.mics.length}</strong><span>actors mic'd</span></div><div class="stat"><strong>LIVE</strong><span>show status</span></div><div class="stat"><strong>4</strong><span>stations online</span></div></div><textarea class="notes" placeholder="Add private rehearsal notes..."></textarea></div></div>`;
 }
 
 function addLog(type, text) {
