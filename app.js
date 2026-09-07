@@ -172,7 +172,7 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const currentScene = () => scenes[state.sceneIndex];
-const roleNames = { caller: "SHOW CALLER", admin: "ADMIN", lighting: "LIGHTING TECH", audio: "AUDIO TECH", backstage: "BACKSTAGE CREW", screens: "SIDE SCREEN OPERATOR", director: "DIRECTOR" };
+const roleNames = { caller: "SHOW CALLER", admin: "ADMIN", guest: "GUEST VIEWER", lighting: "LIGHTING TECH", audio: "AUDIO TECH", backstage: "BACKSTAGE CREW", screens: "SIDE SCREEN OPERATOR", director: "DIRECTOR" };
 let socket = null;
 
 function sendEvent(event) {
@@ -254,7 +254,14 @@ function connectSocket() {
           state.adminData = payload.data;
           if (state.role === "admin") render();
         } else if (payload.type === "admin:logout-all") {
-          addLog("ADMIN", "You were signed out by Luke");
+          localStorage.removeItem("bittersweet-token");
+          if (socket) socket.close();
+          socket = null;
+          state.user = null;
+          $("#login-form").reset();
+          $("#login-error").textContent = "You were signed out by Luke.";
+          $("#login-screen").hidden = false;
+          $(".app-shell").style.visibility = "hidden";
         } else if (payload.type === "event") {
           handleRemoteEvent(payload.event);
         } else if (payload.type === "state:init" || payload.type === "state:update") {
@@ -267,7 +274,7 @@ function connectSocket() {
 
 function renderScenes() {
   $("#scene-list").innerHTML = scenes.map((scene, index) => `
-    <button class="scene-button ${index === state.sceneIndex ? "active" : ""}" data-scene="${index}" ${["caller", "admin"].includes(state.user?.role || state.role) ? "" : "disabled"}>
+    <button class="scene-button ${index === state.sceneIndex ? "active" : ""}" data-scene="${index}" ${["caller", "admin", "guest"].includes(state.user?.role || state.role) ? "" : "disabled"}>
       <span class="scene-number">${scene.act}.${scene.number}</span>
       <span><strong>Scene ${scene.number}</strong><small>${scene.title}</small></span>
     </button>`).join("");
@@ -300,7 +307,11 @@ function cueRows(items, type, idPrefix = type, interactive = true) {
   }).join("");
 }
 
-function callerView(scene) {
+function canControl() {
+  return state.user?.role === "caller" || (state.user?.role === "admin" && state.user?.username === "luke");
+}
+
+function callerView(scene, allowControls = canControl()) {
   const allCues = [
     ...scene.lighting.map((x, index) => ({ ...x, type: "lighting", cueId: `lighting-${index}` })),
     ...scene.audio.map((x, index) => ({ ...x, type: "audio", cueId: `audio-${index}` })),
@@ -308,8 +319,8 @@ function callerView(scene) {
     ...scene.screens.map((x, index) => ({ ...x, type: "screens", cueId: `screens-${index}` }))
   ];
   return `<div class="panel script-panel"><div class="panel-header"><h2>Script timeline</h2><span class="next-cue">NEXT CUE · ${scene.script.find((line) => line.cue)?.character || "—"}</span></div><div class="script-body">${scene.script.map((line) => `<div class="script-line ${line.cue ? "cue" : ""}"><span class="character">${line.character}${line.cue ? " · CUE LINE" : ""}</span>${line.line}</div>`).join("")}</div></div>
-    <div class="panel cue-panel"><div class="panel-header"><h2>Cue control</h2><span class="next-cue">${allCues.length} cues in scene</span></div><div class="panel-body"><div class="cue-list">${allCues.map((cue) => cueRows([cue], cue.type, cue.cueId)).join("")}</div></div></div>
-    ${statsPanel(scene)}${emergencyPanel()}`;
+    <div class="panel cue-panel"><div class="panel-header"><h2>${allowControls ? "Cue control" : "Cue overview"}</h2><span class="next-cue">${allCues.length} cues in scene</span></div><div class="panel-body"><div class="cue-list">${allCues.map((cue) => cueRows([cue], cue.type, cue.cueId, allowControls)).join("")}</div></div></div>
+    ${statsPanel(scene)}${allowControls ? emergencyPanel() : ""}`;
 }
 
 function statsPanel(scene) {
@@ -338,7 +349,7 @@ function specialistView(scene) {
       : `<div class="empty-state">No screen media is assigned to this scene.</div>`;
     return `<div class="panel"><div class="panel-header"><h2>Screen cue feed</h2><span class="next-cue">${state.screensFrozen ? "SCREENS FROZEN" : "LISTENING FOR CALLER"}</span></div><div class="panel-body"><div class="crew-notice">Media playback is controlled by the show caller.</div>${screenPreview}<div class="cue-list" style="margin-top:12px">${cueRows(scene.screens, "screens", "screens", false)}</div></div></div><div class="panel"><div class="panel-header"><h2>CYC background</h2></div><div class="panel-body"><div class="stat-grid"><div class="stat"><strong>${state.screensFrozen ? "FROZEN" : "BLUE"}</strong><span>current wash</span></div><div class="stat"><strong>3</strong><span>presets ready</span></div></div></div></div>`;
   }
-  if (state.role === "admin") return `<div class="panel full-width"><div class="panel-header"><h2>Administrator control room</h2><span class="next-cue">FULL ACCESS</span></div><div class="panel-body"><div class="crew-notice admin-notice">Luke has full system permissions. Use this view to monitor stations and test show controls.</div><div class="stat-grid"><div class="stat"><strong>${scene.lighting.length + scene.audio.length}</strong><span>active cues</span></div><div class="stat"><strong>${scene.mics.length}</strong><span>actors mic'd</span></div><div class="stat"><strong>LIVE</strong><span>show status</span></div><div class="stat"><strong>4</strong><span>stations online</span></div></div><textarea class="notes" placeholder="Add administrator notes..."></textarea></div></div>${callerView(scene)}`;
+  if (state.role === "admin") return `<div class="panel full-width"><div class="panel-header"><h2>Administrator control room</h2><span class="next-cue">${canControl() ? "LUKE ONLY · FULL ACCESS" : "READ-ONLY GUEST VIEW"}</span></div><div class="panel-body"><div class="crew-notice admin-notice">${canControl() ? "Luke has full system permissions. Use this view to monitor stations and test show controls." : "Guest access is read-only. Controls are disabled."}</div><div class="stat-grid"><div class="stat"><strong>${scene.lighting.length + scene.audio.length}</strong><span>active cues</span></div><div class="stat"><strong>${scene.mics.length}</strong><span>actors mic'd</span></div><div class="stat"><strong>LIVE</strong><span>show status</span></div><div class="stat"><strong>4</strong><span>stations online</span></div></div></div></div>${callerView(scene, canControl())}`;
   return `<div class="panel full-width"><div class="panel-header"><h2>Director overview</h2><span class="next-cue">READ-ONLY SHOW MONITOR</span></div><div class="panel-body"><div class="crew-notice">The show caller controls all cues and emergency actions. This view monitors the live system.</div><div class="stat-grid"><div class="stat"><strong>${scene.lighting.length + scene.audio.length}</strong><span>active cues</span></div><div class="stat"><strong>${scene.mics.length}</strong><span>actors mic'd</span></div><div class="stat"><strong>LIVE</strong><span>show status</span></div><div class="stat"><strong>4</strong><span>stations online</span></div></div><textarea class="notes" placeholder="Add private rehearsal notes..."></textarea></div></div>`;
 }
 
@@ -434,11 +445,13 @@ function updateConnectionStatus() {
   const label = state.socketConnected ? "Show network online" : "Show network offline";
   const connection = $("#connection-status");
   const syncLabel = $("#sync-label");
+  const syncStatus = $(".sync-status");
   if (connection) {
     connection.classList.toggle("offline", !state.socketConnected);
     connection.querySelector("span:last-child").textContent = label;
   }
   if (syncLabel) syncLabel.textContent = state.socketConnected ? "Live show network connected" : "Offline — reconnecting";
+  if (syncStatus) syncStatus.classList.toggle("offline", !state.socketConnected);
 }
 
 function updateTimerButton() {
@@ -468,13 +481,17 @@ function render() {
 function updateAdminOption(user) {
   const option = $("#admin-role-option");
   const isLuke = user?.username === "luke";
-  option.hidden = !isLuke;
-  option.disabled = !isLuke;
+  const isGuest = user?.role === "guest";
+  option.hidden = !(isLuke || isGuest);
+  option.disabled = !(isLuke || isGuest);
+  const guestOption = $("#guest-role-option");
+  guestOption.hidden = !isGuest;
+  guestOption.disabled = false;
   $("#timer-button").disabled = !["caller", "admin"].includes(user?.role);
   updateTimerButton();
 }
 
-$("#role-select").addEventListener("change", (event) => { if (!["caller", "admin"].includes(state.user?.role || state.role)) return; state.role = event.target.value; addLog("SYSTEM", `${roleNames[state.role]} view selected`); render(); });
+$("#role-select").addEventListener("change", (event) => { if (!["caller", "admin", "guest"].includes(state.user?.role || state.role)) return; state.role = event.target.value; addLog("SYSTEM", `${roleNames[state.role]} view selected`); render(); });
 $("#resume-button").addEventListener("click", () => { state.hold = false; state.holdMessage = ""; sendEvent({ type: "show:hold", value: false, message: "" }); addLog("ALERT", "Show resumed"); render(); });
 $("#timer-button").addEventListener("click", () => {
   const nextPaused = !state.timerPaused;
@@ -516,7 +533,7 @@ async function signIn(event) {
     $("#login-screen").hidden = true;
     $(".app-shell").style.visibility = "visible";
     $("#role-select").value = state.role === "admin" ? "caller" : state.role;
-    $("#role-select").disabled = !["caller", "admin"].includes(result.user.role);
+    $("#role-select").disabled = !["caller", "admin", "guest"].includes(result.user.role);
     $(".avatar").textContent = result.user.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
     render();
     connectSocket();
@@ -540,7 +557,7 @@ if (window.location.protocol === "file:") {
         $("#login-screen").hidden = true;
         $(".app-shell").style.visibility = "visible";
         $("#role-select").value = state.role;
-        $("#role-select").disabled = !["caller", "admin"].includes(result.user.role);
+        $("#role-select").disabled = !["caller", "admin", "guest"].includes(result.user.role);
         $(".avatar").textContent = result.user.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
         render();
         connectSocket();

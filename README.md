@@ -73,11 +73,12 @@ The server includes role-based login. On Render, add a `JWT_SECRET` environment 
 [
   { "username": "caller", "password": "*", "role": "caller", "displayName": "Show Caller" },
   { "username": "luke", "password": "*", "role": "admin", "displayName": "Luke" },
-  { "username": "lighting", "password": "*", "role": "lighting", "displayName": "Lighting Tech" }
+  { "username": "lighting", "password": "*", "role": "lighting", "displayName": "Lighting Tech" },
+  { "username": "guest", "password": "*", "role": "guest", "displayName": "Guest Viewer" }
 ]
 ```
 
-Add one object for each crew member. The `caller` and `admin` roles can send cue, scene, and show-control events. All other roles receive read-only dashboards. The `admin` role is restricted to the username `luke` and includes a private full-access administrator view with connected-station and backend diagnostics.
+Add one object for each crew member. The `caller` and Luke's `admin` role can send cue, scene, and show-control events. Crew roles receive read-only dashboards. The `guest` role can switch between every dashboard view, including Admin, but cannot send control events. The `admin` role is restricted to the username `luke` and includes a private full-access administrator view with connected-station and backend diagnostics.
 
 ## Project Structure
 

@@ -67,7 +67,9 @@ select { appearance: none; border: 1px solid var(--line); border-radius: 6px; ba
 h1 { margin: 7px 0 0; font: 700 clamp(24px, 3vw, 34px) Montserrat, sans-serif; letter-spacing: -.03em; }
 h1 span { color: var(--gold); }
 .sync-status { color: #9ad7ae; font-size: 12px; display: flex; gap: 8px; align-items: center; }
+.sync-status.offline { color: #ff9b9b; }
 .pulse-dot { width: 8px; height: 8px; background: var(--green); box-shadow: 0 0 0 4px #27ae6022; }
+.sync-status.offline .pulse-dot { background: var(--red); box-shadow: 0 0 0 4px #eb575722; }
 .alert-banner { display: flex; align-items: center; gap: 15px; padding: 14px 17px; background: #4e252c; border: 1px solid #a84750; border-radius: 8px; margin-bottom: 20px; }
 .alert-banner[hidden] { display: none; }
 .alert-banner strong { color: #ff9b9b; }

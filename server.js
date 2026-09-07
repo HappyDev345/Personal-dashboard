@@ -20,7 +20,8 @@ const demoUsers = [
   { username: "audio", password: "bittersweet", role: "audio", displayName: "Audio Tech" },
   { username: "backstage", password: "bittersweet", role: "backstage", displayName: "Backstage Crew" },
   { username: "screens", password: "bittersweet", role: "screens", displayName: "Side Screen Operator" },
-  { username: "director", password: "bittersweet", role: "director", displayName: "Director" }
+  { username: "director", password: "bittersweet", role: "director", displayName: "Director" },
+  { username: "guest", password: "bittersweet", role: "guest", displayName: "Guest Viewer" }
 ];
 function loadUsers() {
   if (!process.env.SHOW_USERS_JSON) return process.env.NODE_ENV === "production" ? [] : demoUsers;
@@ -30,12 +31,15 @@ function loadUsers() {
   } catch (error) {
     throw new Error(`SHOW_USERS_JSON must be valid JSON: ${error.message}`);
   }
-  if (!Array.isArray(users) || users.some((user) => !user || typeof user.username !== "string" || typeof user.password !== "string" || !["caller", "admin", "lighting", "audio", "backstage", "screens", "director"].includes(user.role) || typeof user.displayName !== "string")) {
+  if (!Array.isArray(users) || users.some((user) => !user || typeof user.username !== "string" || typeof user.password !== "string" || !["caller", "admin", "lighting", "audio", "backstage", "screens", "director", "guest"].includes(user.role) || typeof user.displayName !== "string")) {
     throw new Error("SHOW_USERS_JSON must be an array of users with username, password, role, and displayName.");
   }
   return users;
 }
 const configuredUsers = loadUsers();
+if (!configuredUsers.some((user) => user.username === "guest")) {
+  configuredUsers.push({ username: "guest", password: "bittersweet", role: "guest", displayName: "Guest Viewer" });
+}
 
 const showState = {
   sceneIndex: 0,
@@ -199,9 +203,13 @@ webSocketServer.on("connection", (socket, request) => {
       showState.lastEvent = { type: message.type, receivedAt: new Date().toISOString() };
       eventLog.unshift(showState.lastEvent);
       eventLog.splice(20);
-      broadcast({ type: "admin:logout-all", initiatedBy: user.username });
       webSocketServer.clients.forEach((client) => {
-        if (client !== socket && client.readyState === 1) client.close(4001, "Signed out by Luke.");
+        if (client !== socket && client.readyState === 1) {
+          client.send(JSON.stringify({ type: "admin:logout-all", initiatedBy: user.username }));
+          setTimeout(() => {
+            if (client.readyState === 1) client.close(4001, "Signed out by Luke.");
+          }, 100);
+        }
       });
       broadcastAdminSnapshot();
       return;
