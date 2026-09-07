@@ -87,24 +87,26 @@ function handleRemoteEvent(event) {
 function connectSocket() {
   const token = localStorage.getItem("bittersweet-token");
   if (!token || !window.WebSocket || !["http:", "https:"].includes(window.location.protocol)) return;
-  socket = new WebSocket(`${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}?token=${encodeURIComponent(token)}`);
-  socket.addEventListener("open", () => {
-    $("#sync-label").textContent = "Connected to show server";
-  });
-  socket.addEventListener("close", () => {
-    $("#sync-label").textContent = "Offline — local controls only";
-  });
-  socket.addEventListener("message", (message) => {
-    const payload = JSON.parse(message.data);
-    if (payload.type === "admin:update" && state.user?.username === "luke") {
-      state.adminData = payload.data;
-      if (state.role === "admin") render();
-    } else if (payload.type === "event") {
-      handleRemoteEvent(payload.event);
-    } else if (payload.type === "state:init" || payload.type === "state:update") {
-      applyRemoteState(payload.state);
-    }
-  });
+  fetch("/api/socket-ticket", { method: "POST", headers: { Authorization: `Bearer ${token}` } })
+    .then((response) => response.ok ? response.json() : Promise.reject(new Error("Unable to authorize realtime connection")))
+    .then(({ ticket }) => {
+      socket = new WebSocket(`${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}?ticket=${encodeURIComponent(ticket)}`);
+      socket.addEventListener("open", () => { $("#sync-label").textContent = "Connected to show server"; });
+      socket.addEventListener("close", () => { $("#sync-label").textContent = "Offline — local controls only"; });
+      socket.addEventListener("message", (message) => {
+        let payload;
+        try { payload = JSON.parse(message.data); } catch { $("#sync-label").textContent = "Invalid server message"; return; }
+        if (payload.type === "admin:update" && state.user?.username === "luke") {
+          state.adminData = payload.data;
+          if (state.role === "admin") render();
+        } else if (payload.type === "event") {
+          handleRemoteEvent(payload.event);
+        } else if (payload.type === "state:init" || payload.type === "state:update") {
+          applyRemoteState(payload.state);
+        }
+      });
+    })
+    .catch(() => { $("#sync-label").textContent = "Realtime connection unavailable"; });
 }
 
 function renderScenes() {
@@ -205,8 +207,12 @@ function adminView() {
   const data = state.adminData || { uptimeSeconds: 0, clients: 0, users: [], lastEvent: null, recentEvents: [] };
   const uptime = `${Math.floor(data.uptimeSeconds / 3600)}h ${Math.floor((data.uptimeSeconds % 3600) / 60)}m`;
   return `<div class="panel full-width"><div class="panel-header"><h2>Administrator control room</h2><span class="next-cue">LUKE ONLY · FULL ACCESS</span></div><div class="panel-body"><div class="crew-notice admin-notice">Private technical monitor. This view is available only to Luke.</div><div class="stat-grid"><div class="stat"><strong>ONLINE</strong><span>backend status</span></div><div class="stat"><strong>${data.clients}</strong><span>connected clients</span></div><div class="stat"><strong>${data.users.length}</strong><span>logged-in stations</span></div><div class="stat"><strong>${uptime}</strong><span>server uptime</span></div></div></div></div>
-    <div class="panel"><div class="panel-header"><h2>Connected stations</h2><small>Live WebSocket registry</small></div><div class="panel-body"><div class="user-list">${data.users.length ? data.users.map((user) => `<div class="user-row"><div><strong>${user.displayName}</strong><small>${user.username} · ${user.role}</small></div><span class="device-label">${user.device}</span></div>`).join("") : '<p class="empty-state">No connected stations.</p>'}</div></div>
-    <div class="panel"><div class="panel-header"><h2>Backend diagnostics</h2><small>Live server telemetry</small></div><div class="panel-body"><div class="diagnostic-list"><div><span>WebSocket</span><strong>CONNECTED</strong></div><div><span>State store</span><strong>IN MEMORY</strong></div><div><span>Last event</span><strong>${data.lastEvent ? data.lastEvent.type : "NONE"}</strong></div><div><span>Received</span><strong>${data.lastEvent ? new Date(data.lastEvent.receivedAt).toLocaleTimeString() : "—"}</strong></div></div><div class="admin-log">${data.recentEvents.slice(0, 6).map((event) => `<div><strong>${event.type}</strong><span>${new Date(event.receivedAt).toLocaleTimeString()}</span></div>`).join("") || '<p class="empty-state">No events recorded.</p>'}</div></div></div>`;
+    <div class="panel"><div class="panel-header"><h2>Connected stations</h2><small>Live WebSocket registry</small></div><div class="panel-body"><div class="user-list">${data.users.length ? data.users.map((user) => `<div class="user-row"><div><strong>${escapeHtml(user.displayName)}</strong><small>${escapeHtml(user.username)} · ${escapeHtml(user.role)}</small></div><span class="device-label">${escapeHtml(user.device)}</span></div>`).join("") : '<p class="empty-state">No connected stations.</p>'}</div></div>
+    <div class="panel"><div class="panel-header"><h2>Backend diagnostics</h2><small>Live server telemetry</small></div><div class="panel-body"><div class="diagnostic-list"><div><span>WebSocket</span><strong>CONNECTED</strong></div><div><span>State store</span><strong>IN MEMORY</strong></div><div><span>Last event</span><strong>${escapeHtml(data.lastEvent ? data.lastEvent.type : "NONE")}</strong></div><div><span>Received</span><strong>${escapeHtml(data.lastEvent ? new Date(data.lastEvent.receivedAt).toLocaleTimeString() : "—")}</strong></div></div><div class="admin-log">${data.recentEvents.slice(0, 6).map((event) => `<div><strong>${escapeHtml(event.type)}</strong><span>${escapeHtml(new Date(event.receivedAt).toLocaleTimeString())}</span></div>`).join("") || '<p class="empty-state">No events recorded.</p>'}</div></div></div>`;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character]);
 }
 
 function renderLog() { $("#cue-log").innerHTML = state.logs.map((log) => `<span class="log-entry"><strong>${log.time}</strong> ${log.type} · ${log.text}</span>`).join(""); }

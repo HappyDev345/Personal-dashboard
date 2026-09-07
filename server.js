@@ -7,10 +7,12 @@ const app = express();
 const server = http.createServer(app);
 const webSocketServer = new WebSocketServer({ server });
 const port = process.env.PORT || 3000;
-const jwtSecret = process.env.JWT_SECRET || "development-only-change-this-secret";
+const jwtSecret = process.env.JWT_SECRET || (process.env.NODE_ENV === "production" ? null : "development-only-change-this-secret");
+if (!jwtSecret) throw new Error("JWT_SECRET must be set in production.");
 const startedAt = new Date();
 const connectedUsers = new Map();
 const eventLog = [];
+const socketTickets = new Map();
 const demoUsers = [
   { username: "caller", password: "bittersweet", role: "caller", displayName: "Show Caller" },
   { username: "luke", password: "bittersweet", role: "admin", displayName: "Luke Kohlhoff" },
@@ -20,9 +22,20 @@ const demoUsers = [
   { username: "screens", password: "bittersweet", role: "screens", displayName: "Side Screen Operator" },
   { username: "director", password: "bittersweet", role: "director", displayName: "Director" }
 ];
-const configuredUsers = process.env.SHOW_USERS_JSON
-  ? JSON.parse(process.env.SHOW_USERS_JSON)
-  : process.env.NODE_ENV === "production" ? [] : demoUsers;
+function loadUsers() {
+  if (!process.env.SHOW_USERS_JSON) return process.env.NODE_ENV === "production" ? [] : demoUsers;
+  let users;
+  try {
+    users = JSON.parse(process.env.SHOW_USERS_JSON);
+  } catch (error) {
+    throw new Error(`SHOW_USERS_JSON must be valid JSON: ${error.message}`);
+  }
+  if (!Array.isArray(users) || users.some((user) => !user || typeof user.username !== "string" || typeof user.password !== "string" || !["caller", "admin", "lighting", "audio", "backstage", "screens", "director"].includes(user.role) || typeof user.displayName !== "string")) {
+    throw new Error("SHOW_USERS_JSON must be an array of users with username, password, role, and displayName.");
+  }
+  return users;
+}
+const configuredUsers = loadUsers();
 
 const showState = {
   sceneIndex: 0,
@@ -41,6 +54,11 @@ app.post("/api/login", (request, response) => {
   const token = jwt.sign({ username: user.username, role: user.role, displayName: user.displayName }, jwtSecret, { expiresIn: "12h" });
   return response.json({ token, user: { username: user.username, role: user.role, displayName: user.displayName } });
 });
+app.post("/api/socket-ticket", authenticateRequest, (request, response) => {
+  const ticket = require("crypto").randomBytes(32).toString("hex");
+  socketTickets.set(ticket, { user: request.user, expiresAt: Date.now() + 60_000 });
+  return response.json({ ticket });
+});
 app.get("/api/me", authenticateRequest, (request, response) => response.json({ user: request.user }));
 app.get("/health", (_request, response) => {
   response.json({ status: "ok", clients: webSocketServer.clients.size });
@@ -52,6 +70,16 @@ function authenticateToken(token) {
     return jwt.verify(token, jwtSecret);
   } catch {
     return null;
+  }
+
+  function consumeSocketTicket(ticket) {
+    const entry = socketTickets.get(ticket);
+    if (!entry || entry.expiresAt < Date.now()) {
+      socketTickets.delete(ticket);
+      return null;
+    }
+    socketTickets.delete(ticket);
+    return entry.user;
   }
 }
 
@@ -95,7 +123,7 @@ function broadcastAdminSnapshot() {
 
 webSocketServer.on("connection", (socket, request) => {
   const requestUrl = new URL(request.url, `http://${request.headers.host || "localhost"}`);
-  const user = authenticateToken(requestUrl.searchParams.get("token"));
+  const user = consumeSocketTicket(requestUrl.searchParams.get("ticket"));
   if (!user) {
     socket.close(1008, "Authentication required.");
     return;
