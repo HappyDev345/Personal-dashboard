@@ -35,6 +35,7 @@ const scenes = [
 const state = {
   sceneIndex: 0, role: "caller", timerSeconds: 872, timerPaused: false, hold: false,
   cueStates: {}, micStates: { Elimelech: true, Mahlon: true, Chilon: false, Naomi: true },
+  flashCueId: null,
   checklist: {}, logs: [{ time: "14:31", text: "System ready", type: "SYSTEM" }]
 };
 
@@ -58,6 +59,25 @@ function applyRemoteState(remoteState) {
   render();
 }
 
+function handleRemoteEvent(event) {
+  if (!event) return;
+  if (event.type === "cue:go") {
+    state.flashCueId = event.cueId;
+    addLog("GO", `${event.cueId.toUpperCase()} received`);
+    render();
+    window.setTimeout(() => {
+      if (state.flashCueId === event.cueId) {
+        state.flashCueId = null;
+        render();
+      }
+    }, 1800);
+  } else if (event.type === "scene:select") {
+    addLog("SYSTEM", "Scene changed by show caller");
+  } else if (event.type === "show:hold") {
+    addLog("ALERT", event.value ? "SHOW HOLD received" : "Show resumed");
+  }
+}
+
 if (socket) {
   socket.addEventListener("open", () => {
     $("#sync-label").textContent = "Connected to show server";
@@ -67,7 +87,10 @@ if (socket) {
   });
   socket.addEventListener("message", (message) => {
     const payload = JSON.parse(message.data);
-    if (payload.type === "state:init" || payload.type === "state:update") applyRemoteState(payload.state);
+    if (payload.type === "state:init" || payload.type === "state:update") {
+      applyRemoteState(payload.state);
+      if (payload.type === "state:update") handleRemoteEvent(payload.event);
+    }
   });
 }
 
@@ -93,7 +116,7 @@ function cueRows(items, type, idPrefix = type) {
     const stateName = state.cueStates[id] || "standby";
     const name = item.description || item.item || item.file;
     const label = item.cue || item.type?.toUpperCase() || type.toUpperCase();
-    return `<div class="cue-row">
+    return `<div class="cue-row ${state.flashCueId === id ? "cue-row-flash" : ""}">
       <span class="cue-stripe ${type}"></span>
       <div><div class="cue-meta">${label}</div><div class="cue-name">${name}</div></div>
       <div class="cue-actions"><span class="cue-status ${stateName}">${stateName}</span>
@@ -118,7 +141,7 @@ function emergencyPanel() {
 }
 
 function specialistView(scene) {
-  if (state.role === "lighting") return `<div class="panel"><div class="panel-header"><h2>Lighting cue stack</h2><span class="next-cue">GO indicators enabled</span></div><div class="panel-body"><div class="cue-list">${cueRows(scene.lighting, "lighting")}</div></div></div>${statsPanel(scene)}`;
+  if (state.role === "lighting") return `<div class="panel"><div class="panel-header"><h2>Lighting cue stack</h2><span class="next-cue">${state.flashCueId ? "GO NOW" : "GO indicators enabled"}</span></div><div class="panel-body"><div class="cue-list">${cueRows(scene.lighting, "lighting")}</div></div></div>${statsPanel(scene)}`;
   if (state.role === "audio") return `<div class="panel"><div class="panel-header"><h2>Mic grid</h2><span class="next-cue">Scene ${scene.act}.${scene.number}</span></div><div class="panel-body"><div class="mic-grid">${scene.mics.map((mic) => `<div class="mic-card"><div><strong>${mic}</strong><small>Mic ${scene.mics.indexOf(mic) + 1} · ${state.micStates[mic] === false ? "OFF" : "ON"}</small></div><button class="toggle ${state.micStates[mic] !== false ? "on" : ""}" data-mic="${mic}" aria-label="Toggle ${mic} microphone"></button></div>`).join("")}</div></div></div><div class="panel"><div class="panel-header"><h2>Audio & music</h2></div><div class="panel-body"><div class="cue-list">${cueRows(scene.audio, "audio")}</div><div style="height:10px"></div><div class="media-card"><div><div class="media-title">${scene.music[0].item}</div><small>${scene.music[0].source}</small></div><button class="play-button" data-play>▶</button></div></div></div>`;
   if (state.role === "backstage") return `<div class="panel"><div class="panel-header"><h2>Set change checklist</h2><span class="next-cue">Transition in 00:42</span></div><div class="panel-body"><div class="checklist">${scene.set.map((item, index) => `<label class="check-item ${state.checklist[index] ? "done" : ""}"><input type="checkbox" data-check="${index}" ${state.checklist[index] ? "checked" : ""}>${item}</label>`).join("")}</div><button class="ready-button" data-ready style="margin-top:15px;width:100%">MARK SET READY</button></div></div>${statsPanel(scene)}`;
   if (state.role === "screens") return `<div class="panel"><div class="panel-header"><h2>Screen control</h2><span class="next-cue">Auto-advance on</span></div><div class="panel-body"><div class="media-card"><div><div class="media-title">${scene.screens[0].file}</div><small>${scene.screens[0].type.toUpperCase()} · Scene ${scene.act}.${scene.number}</small></div><button class="play-button" data-play>▶</button></div><div class="cue-list" style="margin-top:12px">${cueRows(scene.screens, "screens")}</div></div></div><div class="panel"><div class="panel-header"><h2>CYC background</h2></div><div class="panel-body"><div class="stat-grid"><div class="stat"><strong>BLUE</strong><span>current wash</span></div><div class="stat"><strong>3</strong><span>presets ready</span></div></div></div></div>`;

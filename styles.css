@@ -73,6 +73,8 @@ h1 span { color: var(--gold); }
 .cue-panel { min-height: 370px; }
 .cue-list { display: grid; gap: 9px; }
 .cue-row { display: grid; grid-template-columns: 8px 1fr auto; align-items: center; gap: 12px; padding: 12px; background: var(--panel-2); border-radius: 7px; }
+.cue-row-flash { background: #6b3b91; outline: 2px solid var(--gold); box-shadow: 0 0 0 5px #f2c94c33, 0 0 30px #9b51e0aa; animation: cue-flash 0.45s ease-in-out 3; }
+@keyframes cue-flash { 50% { transform: scale(1.015); background: #9b51e0; } }
 .cue-stripe { width: 4px; height: 34px; border-radius: 3px; background: var(--blue); }
 .cue-stripe.lighting { background: var(--purple); }.cue-stripe.music { background: var(--green); }.cue-stripe.screens { background: var(--orange); }
 .cue-meta { color: var(--muted); font-size: 11px; }.cue-name { margin: 3px 0 0; font-weight: 600; }
