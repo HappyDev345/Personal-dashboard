@@ -35,16 +35,14 @@ const scenes = [
 const state = {
   sceneIndex: 0, role: "caller", timerSeconds: 872, timerPaused: false, hold: false,
   cueStates: {}, micStates: { Elimelech: true, Mahlon: true, Chilon: false, Naomi: true },
-  flashCueId: null,
+  flashCueId: null, user: null,
   checklist: {}, logs: [{ time: "14:31", text: "System ready", type: "SYSTEM" }]
 };
 
 const $ = (selector) => document.querySelector(selector);
 const currentScene = () => scenes[state.sceneIndex];
 const roleNames = { caller: "SHOW CALLER", lighting: "LIGHTING TECH", audio: "AUDIO TECH", backstage: "BACKSTAGE CREW", screens: "SIDE SCREEN OPERATOR", director: "DIRECTOR" };
-const socket = window.WebSocket && ["http:", "https:"].includes(window.location.protocol)
-  ? new WebSocket(`${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`)
-  : null;
+let socket = null;
 
 function sendEvent(event) {
   if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(event));
@@ -85,7 +83,10 @@ function handleRemoteEvent(event) {
   }
 }
 
-if (socket) {
+function connectSocket() {
+  const token = localStorage.getItem("bittersweet-token");
+  if (!token || !window.WebSocket || !["http:", "https:"].includes(window.location.protocol)) return;
+  socket = new WebSocket(`${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}?token=${encodeURIComponent(token)}`);
   socket.addEventListener("open", () => {
     $("#sync-label").textContent = "Connected to show server";
   });
@@ -208,8 +209,41 @@ function render() {
   renderScenes(); renderLog(); bindEvents();
 }
 
-$("#role-select").addEventListener("change", (event) => { state.role = event.target.value; addLog("SYSTEM", `${roleNames[state.role]} view selected`); render(); });
+$("#role-select").addEventListener("change", (event) => { if (state.role !== "caller") return; state.role = event.target.value; addLog("SYSTEM", `${roleNames[state.role]} view selected`); render(); });
 $("#resume-button").addEventListener("click", () => { state.hold = false; sendEvent({ type: "show:hold", value: false }); addLog("ALERT", "Show resumed"); render(); });
 $("#timer-button").addEventListener("click", () => { state.timerPaused = !state.timerPaused; $("#timer-button").textContent = state.timerPaused ? "▶" : "Ⅱ"; $("#timer-button").title = state.timerPaused ? "Resume timer" : "Pause timer"; });
 setInterval(() => { if (!state.timerPaused) { state.timerSeconds += 1; const h = String(Math.floor(state.timerSeconds / 3600)).padStart(2, "0"); const m = String(Math.floor((state.timerSeconds % 3600) / 60)).padStart(2, "0"); const s = String(state.timerSeconds % 60).padStart(2, "0"); $("#timer").textContent = `${h}:${m}:${s}`; } }, 1000);
 render();
+
+async function signIn(event) {
+  event.preventDefault();
+  const error = $("#login-error");
+  error.textContent = "";
+  const response = await fetch("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: $("#username").value.trim(), password: $("#password").value })
+  });
+  if (!response.ok) {
+    error.textContent = "Invalid username or password.";
+    return;
+  }
+  const result = await response.json();
+  localStorage.setItem("bittersweet-token", result.token);
+  state.user = result.user;
+  state.role = result.user.role;
+  $("#login-screen").hidden = true;
+  $("#role-select").value = state.role;
+  $("#role-select").disabled = state.role !== "caller";
+  $(".avatar").textContent = result.user.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+  render();
+  connectSocket();
+}
+
+$("#login-form").addEventListener("submit", signIn);
+if (window.location.protocol === "file:") {
+  $("#login-screen").hidden = true;
+} else {
+  $("#login-screen").hidden = false;
+  $(".app-shell").style.visibility = "hidden";
+}

@@ -11,6 +11,19 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div id="login-screen" class="login-screen">
+      <form id="login-form" class="login-card">
+        <span class="brand-mark">B</span>
+        <p class="eyebrow">BITTERSWEET PRODUCTION DESK</p>
+        <h1>Sign in to your station</h1>
+        <label for="username">Username</label>
+        <input id="username" name="username" autocomplete="username" required />
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required />
+        <button class="login-button" type="submit">SIGN IN</button>
+        <p id="login-error" class="login-error" role="alert"></p>
+      </form>
+    </div>
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">

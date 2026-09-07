@@ -65,6 +65,19 @@ This first backend keeps state in server memory. Restarting the Render service r
 
 Free cloud services may have usage limits, sleep when inactive, or depend on internet access. For a live performance, keep a local backup copy or local server available.
 
+### Configure authentication
+
+The server includes role-based login. On Render, add a `JWT_SECRET` environment variable and a `SHOW_USERS_JSON` secret containing users such as:
+
+```json
+[
+  { "username": "caller", "password": "use-a-strong-password", "role": "caller", "displayName": "Show Caller" },
+  { "username": "lighting", "password": "use-a-strong-password", "role": "lighting", "displayName": "Lighting Tech" }
+]
+```
+
+Add one object for each crew member. Only the `caller` role can send cue, scene, and show-control events. All other roles receive read-only dashboards.
+
 ## Project Structure
 
 ```text

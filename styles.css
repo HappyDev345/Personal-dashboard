@@ -16,6 +16,15 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--navy); color: var(--text); font: 14px Inter, sans-serif; }
+.login-screen { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: radial-gradient(circle at top, #17334d, var(--navy) 55%); }
+.login-screen[hidden] { display: none; }
+.login-card { width: min(380px, calc(100vw - 32px)); padding: 34px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 20px 60px #0008; }
+.login-card .brand-mark { display: grid; margin-bottom: 22px; }
+.login-card h1 { font-size: 25px; margin: 8px 0 25px; }
+.login-card label { display: block; margin: 13px 0 6px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.login-card input { width: 100%; border: 1px solid var(--line); border-radius: 6px; background: var(--navy-2); color: var(--text); padding: 11px; }
+.login-button { width: 100%; margin-top: 22px; border: 0; border-radius: 6px; background: var(--gold); color: var(--navy); padding: 12px; font-weight: 800; }
+.login-error { min-height: 17px; margin: 12px 0 0; color: #ff9b9b; font-size: 12px; }
 button, select { font: inherit; }
 button { cursor: pointer; }
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: 250px 1fr; grid-template-rows: 1fr 66px; }
