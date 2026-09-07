@@ -219,31 +219,59 @@ async function signIn(event) {
   event.preventDefault();
   const error = $("#login-error");
   error.textContent = "";
-  const response = await fetch("/api/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username: $("#username").value.trim(), password: $("#password").value })
-  });
-  if (!response.ok) {
-    error.textContent = "Invalid username or password.";
-    return;
+  try {
+    const response = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: $("#username").value.trim(), password: $("#password").value })
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      error.textContent = result.error || "Invalid username or password.";
+      return;
+    }
+    const result = await response.json();
+    localStorage.setItem("bittersweet-token", result.token);
+    state.user = result.user;
+    state.role = result.user.role;
+    $("#login-screen").hidden = true;
+    $(".app-shell").style.visibility = "visible";
+    $("#role-select").value = state.role;
+    $("#role-select").disabled = state.role !== "caller";
+    $(".avatar").textContent = result.user.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+    render();
+    connectSocket();
+  } catch (requestError) {
+    error.textContent = "Unable to reach the show server. Check the Render deployment.";
   }
-  const result = await response.json();
-  localStorage.setItem("bittersweet-token", result.token);
-  state.user = result.user;
-  state.role = result.user.role;
-  $("#login-screen").hidden = true;
-  $("#role-select").value = state.role;
-  $("#role-select").disabled = state.role !== "caller";
-  $(".avatar").textContent = result.user.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
-  render();
-  connectSocket();
 }
 
 $("#login-form").addEventListener("submit", signIn);
 if (window.location.protocol === "file:") {
   $("#login-screen").hidden = true;
 } else {
-  $("#login-screen").hidden = false;
-  $(".app-shell").style.visibility = "hidden";
+  const token = localStorage.getItem("bittersweet-token");
+  if (token) {
+    fetch("/api/me", { headers: { Authorization: `Bearer ${token}` } })
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Session expired")))
+      .then((result) => {
+        state.user = result.user;
+        state.role = result.user.role;
+        $("#login-screen").hidden = true;
+        $(".app-shell").style.visibility = "visible";
+        $("#role-select").value = state.role;
+        $("#role-select").disabled = state.role !== "caller";
+        $(".avatar").textContent = result.user.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+        render();
+        connectSocket();
+      })
+      .catch(() => {
+        localStorage.removeItem("bittersweet-token");
+        $("#login-screen").hidden = false;
+        $(".app-shell").style.visibility = "hidden";
+      });
+  } else {
+    $("#login-screen").hidden = false;
+    $(".app-shell").style.visibility = "hidden";
+  }
 }
