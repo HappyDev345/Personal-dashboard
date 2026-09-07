@@ -71,16 +71,16 @@ function authenticateToken(token) {
   } catch {
     return null;
   }
+}
 
-  function consumeSocketTicket(ticket) {
-    const entry = socketTickets.get(ticket);
-    if (!entry || entry.expiresAt < Date.now()) {
-      socketTickets.delete(ticket);
-      return null;
-    }
+function consumeSocketTicket(ticket) {
+  const entry = socketTickets.get(ticket);
+  if (!entry || entry.expiresAt < Date.now()) {
     socketTickets.delete(ticket);
-    return entry.user;
+    return null;
   }
+  socketTickets.delete(ticket);
+  return entry.user;
 }
 
 function authenticateRequest(request, response, next) {
