@@ -116,11 +116,12 @@ function cueRows(items, type, idPrefix = type) {
     const stateName = state.cueStates[id] || "standby";
     const name = item.description || item.item || item.file;
     const label = item.cue || item.type?.toUpperCase() || type.toUpperCase();
+    const lightingGo = state.role === "lighting" && stateName === "go";
     return `<div class="cue-row ${state.flashCueId === id ? "cue-row-flash" : ""}">
       <span class="cue-stripe ${type}"></span>
       <div><div class="cue-meta">${label}</div><div class="cue-name">${name}</div></div>
       <div class="cue-actions"><span class="cue-status ${stateName}">${stateName}</span>
-      <button class="small-button" data-standby="${id}">STBY</button><button class="go-button" ${state.hold ? "disabled" : ""} data-go="${id}">GO</button></div>
+      <button class="${lightingGo ? "go-now-button" : "small-button"}" ${lightingGo ? "disabled" : ""} data-standby="${id}">${lightingGo ? "GO NOW" : "STBY"}</button><button class="go-button" ${state.hold ? "disabled" : ""} data-go="${id}">GO</button></div>
     </div>`;
   }).join("");
 }
@@ -157,6 +158,7 @@ function addLog(type, text) {
 function bindEvents() {
   document.querySelectorAll("[data-go]").forEach((button) => button.addEventListener("click", () => {
     state.cueStates[button.dataset.go] = "go";
+    state.flashCueId = button.dataset.go;
     sendEvent({ type: "cue:go", cueId: button.dataset.go });
     addLog("GO", `${button.dataset.go.toUpperCase()} fired`);
     $("#go-state").innerHTML = '<span class="go-dot" style="background:#9ad7ae"></span>GO FIRED';
