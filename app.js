@@ -1,4 +1,4 @@
-const scenes = [
+const fallbackScenes = [
   {
     act: 1, number: 1, title: "Are We There Yet?", mics: ["Elimelech", "Mahlon", "Chilon", "Naomi"],
     lighting: [{ cue: 5, description: "Apron & Extensions" }, { cue: 6, description: "Blackout" }],
@@ -161,6 +161,7 @@ const scenes = [
     script: [{ character: "Boaz", line: "Find out about her!" }]
   }
 ];
+const scenes = window.productionScenes || fallbackScenes;
 
 const state = {
   sceneIndex: 0, role: "caller", timerSeconds: 0, timerPaused: false, hold: false, holdMessage: "", screensFrozen: false,
