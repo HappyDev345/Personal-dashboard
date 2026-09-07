@@ -40,10 +40,22 @@ const configuredUsers = loadUsers();
 const showState = {
   sceneIndex: 0,
   hold: false,
+  timerStartedAt: Date.now(),
+  timerPausedAt: null,
+  timerPaused: false,
   cueStates: {},
   micStates: {},
   lastEvent: null
 };
+
+function getTimerSeconds() {
+  const endTime = showState.timerPausedAt || Date.now();
+  return Math.max(0, Math.floor((endTime - showState.timerStartedAt) / 1000));
+}
+
+function currentState() {
+  return { ...showState, timerSeconds: getTimerSeconds() };
+}
 
 app.use(express.static(__dirname));
 app.use(express.json());
@@ -110,7 +122,7 @@ function adminSnapshot() {
     users: [...connectedUsers.values()],
     lastEvent: showState.lastEvent,
     recentEvents: eventLog,
-    state: showState
+    state: currentState()
   };
 }
 
@@ -138,7 +150,7 @@ webSocketServer.on("connection", (socket, request) => {
     device: getDevice(request.headers["user-agent"]),
     connectedAt: new Date().toISOString()
   });
-  socket.send(JSON.stringify({ type: "state:init", state: showState }));
+  socket.send(JSON.stringify({ type: "state:init", state: currentState() }));
   if (user.username === "luke") socket.send(JSON.stringify({ type: "admin:update", data: adminSnapshot() }));
   broadcastAdminSnapshot();
 
@@ -163,6 +175,13 @@ webSocketServer.on("connection", (socket, request) => {
     if (message.type === "scene:select" && Number.isInteger(message.sceneIndex)) {
       showState.sceneIndex = message.sceneIndex;
       showState.cueStates = {};
+    } else if (message.type === "timer:pause" && !showState.timerPaused) {
+      showState.timerPaused = true;
+      showState.timerPausedAt = Date.now();
+    } else if (message.type === "timer:resume" && showState.timerPaused) {
+      showState.timerStartedAt += Date.now() - showState.timerPausedAt;
+      showState.timerPaused = false;
+      showState.timerPausedAt = null;
     } else if (message.type === "cue:standby" && typeof message.cueId === "string") {
       showState.cueStates[message.cueId] = "standby";
     } else if (message.type === "cue:go" && typeof message.cueId === "string") {
@@ -180,7 +199,7 @@ webSocketServer.on("connection", (socket, request) => {
     eventLog.unshift(showState.lastEvent);
     eventLog.splice(20);
     broadcast({ type: "event", event: showState.lastEvent });
-    broadcast({ type: "state:update", state: showState, event: showState.lastEvent });
+    broadcast({ type: "state:update", state: currentState(), event: showState.lastEvent });
     broadcastAdminSnapshot();
   });
   socket.on("close", () => {

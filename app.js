@@ -33,7 +33,7 @@ const scenes = [
 ];
 
 const state = {
-  sceneIndex: 0, role: "caller", timerSeconds: 840, timerPaused: false, hold: false,
+  sceneIndex: 0, role: "caller", timerSeconds: 0, timerPaused: false, hold: false,
   cueStates: {}, micStates: { Elimelech: true, Mahlon: true, Chilon: false, Naomi: true },
   flashCueId: null, user: null,
   adminData: null,
@@ -53,6 +53,8 @@ function applyRemoteState(remoteState) {
   if (!remoteState) return;
   if (Number.isInteger(remoteState.sceneIndex)) state.sceneIndex = remoteState.sceneIndex;
   if (typeof remoteState.hold === "boolean") state.hold = remoteState.hold;
+  if (Number.isInteger(remoteState.timerSeconds)) state.timerSeconds = remoteState.timerSeconds;
+  if (typeof remoteState.timerPaused === "boolean") state.timerPaused = remoteState.timerPaused;
   if (remoteState.cueStates) state.cueStates = { ...remoteState.cueStates };
   if (remoteState.micStates) state.micStates = { ...state.micStates, ...remoteState.micStates };
   render();
@@ -239,11 +241,15 @@ function updateAdminOption(user) {
   const isLuke = user?.username === "luke";
   option.hidden = !isLuke;
   option.disabled = !isLuke;
+  $("#timer-button").disabled = !["caller", "admin"].includes(user?.role);
 }
 
 $("#role-select").addEventListener("change", (event) => { if (!["caller", "admin"].includes(state.user?.role || state.role)) return; state.role = event.target.value; addLog("SYSTEM", `${roleNames[state.role]} view selected`); render(); });
 $("#resume-button").addEventListener("click", () => { state.hold = false; sendEvent({ type: "show:hold", value: false }); addLog("ALERT", "Show resumed"); render(); });
-$("#timer-button").addEventListener("click", () => { state.timerPaused = !state.timerPaused; $("#timer-button").textContent = state.timerPaused ? "▶" : "Ⅱ"; $("#timer-button").title = state.timerPaused ? "Resume timer" : "Pause timer"; });
+$("#timer-button").addEventListener("click", () => {
+  const nextPaused = !state.timerPaused;
+  sendEvent({ type: nextPaused ? "timer:pause" : "timer:resume" });
+});
 $("#sign-out-button").addEventListener("click", () => {
   localStorage.removeItem("bittersweet-token");
   if (socket) socket.close();
@@ -279,7 +285,7 @@ async function signIn(event) {
     updateAdminOption(result.user);
     $("#login-screen").hidden = true;
     $(".app-shell").style.visibility = "visible";
-    $("#role-select").value = state.role;
+    $("#role-select").value = state.role === "admin" ? "caller" : state.role;
     $("#role-select").disabled = !["caller", "admin"].includes(result.user.role);
     $(".avatar").textContent = result.user.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
     render();
