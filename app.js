@@ -41,7 +41,7 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const currentScene = () => scenes[state.sceneIndex];
-const roleNames = { caller: "SHOW CALLER", lighting: "LIGHTING TECH", audio: "AUDIO TECH", backstage: "BACKSTAGE CREW", screens: "SIDE SCREEN OPERATOR", director: "DIRECTOR" };
+const roleNames = { caller: "SHOW CALLER", admin: "ADMIN", lighting: "LIGHTING TECH", audio: "AUDIO TECH", backstage: "BACKSTAGE CREW", screens: "SIDE SCREEN OPERATOR", director: "DIRECTOR" };
 let socket = null;
 
 function sendEvent(event) {
@@ -163,6 +163,7 @@ function specialistView(scene) {
   if (state.role === "audio") return `<div class="panel"><div class="panel-header"><h2>Audio status</h2><span class="next-cue">LISTENING FOR CALLER</span></div><div class="panel-body"><div class="crew-notice">Mic and playback status is informational. The show caller controls cues.</div><div class="mic-grid">${scene.mics.map((mic) => `<div class="mic-card"><div><strong>${mic}</strong><small>Mic ${scene.mics.indexOf(mic) + 1} · ${state.micStates[mic] === false ? "OFF" : "ON"}</small></div><span class="status-pill ${state.micStates[mic] !== false ? "on" : "off"}">${state.micStates[mic] !== false ? "ON" : "OFF"}</span></div>`).join("")}</div></div></div><div class="panel"><div class="panel-header"><h2>Audio & music feed</h2></div><div class="panel-body"><div class="cue-list">${cueRows(scene.audio, "audio", "audio", false)}</div><div style="height:10px"></div><div class="media-card"><div><div class="media-title">${scene.music[0].item}</div><small>${scene.music[0].source}</small></div><span class="status-pill">CALLER CONTROLLED</span></div></div></div>`;
   if (state.role === "backstage") return `<div class="panel"><div class="panel-header"><h2>Set change status</h2><span class="next-cue">WAIT FOR CALLER</span></div><div class="panel-body"><div class="crew-notice">Complete the set change when called, then report readiness to the caller.</div><div class="checklist">${scene.set.map((item, index) => `<div class="check-item ${state.checklist[index] ? "done" : ""}"><span class="check-indicator">${state.checklist[index] ? "✓" : "—"}</span>${item}</div>`).join("")}</div></div></div>${statsPanel(scene)}`;
   if (state.role === "screens") return `<div class="panel"><div class="panel-header"><h2>Screen cue feed</h2><span class="next-cue">LISTENING FOR CALLER</span></div><div class="panel-body"><div class="crew-notice">Media playback is controlled by the show caller.</div><div class="media-card"><div><div class="media-title">${scene.screens[0].file}</div><small>${scene.screens[0].type.toUpperCase()} · Scene ${scene.act}.${scene.number}</small></div><span class="status-pill">CALLER CONTROLLED</span></div><div class="cue-list" style="margin-top:12px">${cueRows(scene.screens, "screens", "screens", false)}</div></div></div><div class="panel"><div class="panel-header"><h2>CYC background</h2></div><div class="panel-body"><div class="stat-grid"><div class="stat"><strong>BLUE</strong><span>current wash</span></div><div class="stat"><strong>3</strong><span>presets ready</span></div></div></div></div>`;
+  if (state.role === "admin") return `<div class="panel full-width"><div class="panel-header"><h2>Administrator control room</h2><span class="next-cue">FULL ACCESS</span></div><div class="panel-body"><div class="crew-notice admin-notice">Luke has full system permissions. Use this view to monitor stations and test show controls.</div><div class="stat-grid"><div class="stat"><strong>${scene.lighting.length + scene.audio.length}</strong><span>active cues</span></div><div class="stat"><strong>${scene.mics.length}</strong><span>actors mic'd</span></div><div class="stat"><strong>LIVE</strong><span>show status</span></div><div class="stat"><strong>4</strong><span>stations online</span></div></div><textarea class="notes" placeholder="Add administrator notes..."></textarea></div></div>${callerView(scene)}`;
   return `<div class="panel full-width"><div class="panel-header"><h2>Director overview</h2><span class="next-cue">READ-ONLY SHOW MONITOR</span></div><div class="panel-body"><div class="crew-notice">The show caller controls all cues and emergency actions. This view monitors the live system.</div><div class="stat-grid"><div class="stat"><strong>${scene.lighting.length + scene.audio.length}</strong><span>active cues</span></div><div class="stat"><strong>${scene.mics.length}</strong><span>actors mic'd</span></div><div class="stat"><strong>LIVE</strong><span>show status</span></div><div class="stat"><strong>4</strong><span>stations online</span></div></div><textarea class="notes" placeholder="Add private rehearsal notes..."></textarea></div></div>`;
 }
 
@@ -209,7 +210,7 @@ function render() {
   renderScenes(); renderLog(); bindEvents();
 }
 
-$("#role-select").addEventListener("change", (event) => { if (state.role !== "caller") return; state.role = event.target.value; addLog("SYSTEM", `${roleNames[state.role]} view selected`); render(); });
+$("#role-select").addEventListener("change", (event) => { if (!["caller", "admin"].includes(state.user?.role || state.role)) return; state.role = event.target.value; addLog("SYSTEM", `${roleNames[state.role]} view selected`); render(); });
 $("#resume-button").addEventListener("click", () => { state.hold = false; sendEvent({ type: "show:hold", value: false }); addLog("ALERT", "Show resumed"); render(); });
 $("#timer-button").addEventListener("click", () => { state.timerPaused = !state.timerPaused; $("#timer-button").textContent = state.timerPaused ? "▶" : "Ⅱ"; $("#timer-button").title = state.timerPaused ? "Resume timer" : "Pause timer"; });
 $("#sign-out-button").addEventListener("click", () => {
@@ -247,7 +248,7 @@ async function signIn(event) {
     $("#login-screen").hidden = true;
     $(".app-shell").style.visibility = "visible";
     $("#role-select").value = state.role;
-    $("#role-select").disabled = state.role !== "caller";
+    $("#role-select").disabled = !["caller", "admin"].includes(result.user.role);
     $(".avatar").textContent = result.user.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
     render();
     connectSocket();
@@ -270,7 +271,7 @@ if (window.location.protocol === "file:") {
         $("#login-screen").hidden = true;
         $(".app-shell").style.visibility = "visible";
         $("#role-select").value = state.role;
-        $("#role-select").disabled = state.role !== "caller";
+        $("#role-select").disabled = !["caller", "admin"].includes(result.user.role);
         $(".avatar").textContent = result.user.displayName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase();
         render();
         connectSocket();

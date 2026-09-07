@@ -10,6 +10,7 @@ const port = process.env.PORT || 3000;
 const jwtSecret = process.env.JWT_SECRET || "development-only-change-this-secret";
 const demoUsers = [
   { username: "caller", password: "bittersweet", role: "caller", displayName: "Show Caller" },
+  { username: "luke", password: "bittersweet", role: "admin", displayName: "Luke Kohlhoff" },
   { username: "lighting", password: "bittersweet", role: "lighting", displayName: "Lighting Tech" },
   { username: "audio", password: "bittersweet", role: "audio", displayName: "Audio Tech" },
   { username: "backstage", password: "bittersweet", role: "backstage", displayName: "Backstage Crew" },
@@ -87,7 +88,7 @@ webSocketServer.on("connection", (socket, request) => {
       socket.send(JSON.stringify({ type: "error", message: "Event type is required." }));
       return;
     }
-    if (user.role !== "caller") {
+    if (!["caller", "admin"].includes(user.role)) {
       socket.send(JSON.stringify({ type: "error", message: "Only the show caller can control cues." }));
       return;
     }
