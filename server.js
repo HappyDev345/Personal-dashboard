@@ -41,6 +41,7 @@ const showState = {
   sceneIndex: 0,
   hold: false,
   holdMessage: "",
+  screensFrozen: false,
   timerStartedAt: Date.now(),
   timerPausedAt: null,
   timerPaused: false,
@@ -190,6 +191,10 @@ webSocketServer.on("connection", (socket, request) => {
     } else if (message.type === "show:hold") {
       showState.hold = Boolean(message.value);
       showState.holdMessage = showState.hold && typeof message.message === "string" ? message.message.trim().slice(0, 160) : "";
+    } else if (message.type === "cue:skip" && typeof message.cueId === "string") {
+      showState.cueStates[message.cueId] = "skipped";
+    } else if (message.type === "screens:freeze") {
+      showState.screensFrozen = Boolean(message.value);
     } else if (message.type === "admin:logout-all" && user.username === "luke") {
       showState.lastEvent = { type: message.type, receivedAt: new Date().toISOString() };
       eventLog.unshift(showState.lastEvent);

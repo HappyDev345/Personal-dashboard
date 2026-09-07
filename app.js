@@ -163,7 +163,7 @@ const scenes = [
 ];
 
 const state = {
-  sceneIndex: 0, role: "caller", timerSeconds: 0, timerPaused: false, hold: false, holdMessage: "",
+  sceneIndex: 0, role: "caller", timerSeconds: 0, timerPaused: false, hold: false, holdMessage: "", screensFrozen: false,
   cueStates: {}, micStates: { Elimelech: true, Mahlon: true, Chilon: false, Naomi: true },
   flashCueId: null, user: null, socketConnected: false,
   adminData: null,
@@ -186,6 +186,7 @@ function applyRemoteState(remoteState) {
   if (Number.isInteger(remoteState.timerSeconds)) state.timerSeconds = remoteState.timerSeconds;
   if (typeof remoteState.timerPaused === "boolean") state.timerPaused = remoteState.timerPaused;
   if (typeof remoteState.holdMessage === "string") state.holdMessage = remoteState.holdMessage;
+  if (typeof remoteState.screensFrozen === "boolean") state.screensFrozen = remoteState.screensFrozen;
   if (remoteState.cueStates) state.cueStates = { ...remoteState.cueStates };
   if (remoteState.micStates) state.micStates = { ...state.micStates, ...remoteState.micStates };
   render();
@@ -216,6 +217,14 @@ function handleRemoteEvent(event) {
     state.hold = Boolean(event.value);
     state.holdMessage = state.hold && typeof event.message === "string" ? event.message : "";
     addLog("ALERT", state.hold ? "SHOW HOLD received" : "Show resumed");
+    render();
+  } else if (event.type === "cue:skip") {
+    state.cueStates[event.cueId] = "skipped";
+    addLog("SKIP", `${event.cueId.toUpperCase()} skipped`);
+    render();
+  } else if (event.type === "screens:freeze") {
+    state.screensFrozen = Boolean(event.value);
+    addLog("ALERT", state.screensFrozen ? "Screens frozen" : "Screens resumed");
     render();
   }
 }
@@ -280,8 +289,8 @@ function cueRows(items, type, idPrefix = type, interactive = true) {
     const label = item.cue ? (typeof item.cue === "number" ? `${type === "lighting" ? "LX" : type.toUpperCase()}-${item.cue}` : item.cue) : item.type?.toUpperCase() || type.toUpperCase();
     const lightingGo = state.role === "lighting" && stateName === "go";
     const controls = interactive
-      ? `<button class="${lightingGo ? "go-now-button" : "small-button"}" ${lightingGo ? "disabled" : ""} data-standby="${id}">${lightingGo ? "GO NOW" : "STBY"}</button><button class="go-button" ${state.hold ? "disabled" : ""} data-go="${id}">GO</button>`
-      : `<span class="cue-received">${stateName === "go" ? "RECEIVED" : "AWAITING GO"}</span>`;
+      ? `<button class="${lightingGo ? "go-now-button" : "small-button"}" ${lightingGo || stateName === "skipped" ? "disabled" : ""} data-standby="${id}">${lightingGo ? "GO NOW" : "STBY"}</button><button class="go-button" ${state.hold || stateName === "skipped" ? "disabled" : ""} data-go="${id}">GO</button>`
+      : `<span class="cue-received">${stateName === "go" ? "RECEIVED" : stateName === "skipped" ? "SKIPPED" : "AWAITING GO"}</span>`;
     return `<div class="cue-row ${state.flashCueId === id ? "cue-row-flash" : ""}">
       <span class="cue-stripe ${type}"></span>
       <div><div class="cue-meta">${label}</div><div class="cue-name">${name}</div></div>
@@ -308,7 +317,7 @@ function statsPanel(scene) {
 }
 
 function emergencyPanel() {
-  return `<div class="panel emergency-panel full-width"><div class="panel-header"><h2>Emergency controls</h2><small>Caller and Luke only</small></div><div class="panel-body emergency-controls"><button class="emergency-button" data-emergency="hold">${state.hold ? "RESUME SHOW" : "HOLD SHOW"}</button><input class="hold-message-input" data-hold-message maxlength="160" placeholder="Optional hold message" value="${escapeHtml(state.holdMessage)}" /><button class="emergency-button" data-emergency="skip">SKIP CUE</button><button class="emergency-button" data-emergency="freeze">FREEZE SCREENS</button></div></div>`;
+  return `<div class="panel emergency-panel full-width"><div class="panel-header"><h2>Emergency controls</h2><small>Caller and Luke only</small></div><div class="panel-body emergency-controls"><button class="emergency-button" data-emergency="hold">${state.hold ? "RESUME SHOW" : "HOLD SHOW"}</button><input class="hold-message-input" data-hold-message maxlength="160" placeholder="Optional hold message" value="${escapeHtml(state.holdMessage)}" /><button class="emergency-button" data-emergency="skip">SKIP CUE</button><button class="emergency-button" data-emergency="freeze">${state.screensFrozen ? "RESUME SCREENS" : "FREEZE SCREENS"}</button></div></div>`;
 }
 
 function specialistView(scene) {
@@ -327,7 +336,7 @@ function specialistView(scene) {
     const screenPreview = scene.screens.length
       ? `<div class="media-card"><div><div class="media-title">${scene.screens[0].file}</div><small>${scene.screens[0].type.toUpperCase()} · Scene ${scene.act}.${scene.number}</small></div><span class="status-pill">CALLER CONTROLLED</span></div>`
       : `<div class="empty-state">No screen media is assigned to this scene.</div>`;
-    return `<div class="panel"><div class="panel-header"><h2>Screen cue feed</h2><span class="next-cue">LISTENING FOR CALLER</span></div><div class="panel-body"><div class="crew-notice">Media playback is controlled by the show caller.</div>${screenPreview}<div class="cue-list" style="margin-top:12px">${cueRows(scene.screens, "screens", "screens", false)}</div></div></div><div class="panel"><div class="panel-header"><h2>CYC background</h2></div><div class="panel-body"><div class="stat-grid"><div class="stat"><strong>BLUE</strong><span>current wash</span></div><div class="stat"><strong>3</strong><span>presets ready</span></div></div></div></div>`;
+    return `<div class="panel"><div class="panel-header"><h2>Screen cue feed</h2><span class="next-cue">${state.screensFrozen ? "SCREENS FROZEN" : "LISTENING FOR CALLER"}</span></div><div class="panel-body"><div class="crew-notice">Media playback is controlled by the show caller.</div>${screenPreview}<div class="cue-list" style="margin-top:12px">${cueRows(scene.screens, "screens", "screens", false)}</div></div></div><div class="panel"><div class="panel-header"><h2>CYC background</h2></div><div class="panel-body"><div class="stat-grid"><div class="stat"><strong>${state.screensFrozen ? "FROZEN" : "BLUE"}</strong><span>current wash</span></div><div class="stat"><strong>3</strong><span>presets ready</span></div></div></div></div>`;
   }
   if (state.role === "admin") return `<div class="panel full-width"><div class="panel-header"><h2>Administrator control room</h2><span class="next-cue">FULL ACCESS</span></div><div class="panel-body"><div class="crew-notice admin-notice">Luke has full system permissions. Use this view to monitor stations and test show controls.</div><div class="stat-grid"><div class="stat"><strong>${scene.lighting.length + scene.audio.length}</strong><span>active cues</span></div><div class="stat"><strong>${scene.mics.length}</strong><span>actors mic'd</span></div><div class="stat"><strong>LIVE</strong><span>show status</span></div><div class="stat"><strong>4</strong><span>stations online</span></div></div><textarea class="notes" placeholder="Add administrator notes..."></textarea></div></div>${callerView(scene)}`;
   return `<div class="panel full-width"><div class="panel-header"><h2>Director overview</h2><span class="next-cue">READ-ONLY SHOW MONITOR</span></div><div class="panel-body"><div class="crew-notice">The show caller controls all cues and emergency actions. This view monitors the live system.</div><div class="stat-grid"><div class="stat"><strong>${scene.lighting.length + scene.audio.length}</strong><span>active cues</span></div><div class="stat"><strong>${scene.mics.length}</strong><span>actors mic'd</span></div><div class="stat"><strong>LIVE</strong><span>show status</span></div><div class="stat"><strong>4</strong><span>stations online</span></div></div><textarea class="notes" placeholder="Add private rehearsal notes..."></textarea></div></div>`;
@@ -337,6 +346,21 @@ function addLog(type, text) {
   const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   state.logs.unshift({ time: now, type, text });
   state.logs = state.logs.slice(0, 5);
+}
+
+function nextCueId() {
+  const scene = currentScene();
+  const cueGroups = [
+    ["lighting", scene.lighting],
+    ["audio", scene.audio],
+    ["music", scene.music],
+    ["screens", scene.screens]
+  ];
+  for (const [type, cues] of cueGroups) {
+    const index = cues.findIndex((_cue, cueIndex) => !["go", "skipped"].includes(state.cueStates[`${type}-${cueIndex}`]));
+    if (index >= 0) return `${type}-${index}`;
+  }
+  return null;
 }
 
 function bindEvents() {
@@ -356,8 +380,20 @@ function bindEvents() {
   document.querySelectorAll("[data-play]").forEach((button) => button.addEventListener("click", () => { button.textContent = button.textContent === "▶" ? "Ⅱ" : "▶"; addLog("MEDIA", button.textContent === "Ⅱ" ? "Playback started" : "Playback paused"); renderLog(); }));
   document.querySelectorAll("[data-emergency]").forEach((button) => button.addEventListener("click", () => {
     if (button.dataset.emergency === "hold") { state.hold = !state.hold; const message = $("[data-hold-message]")?.value.trim() || ""; state.holdMessage = state.hold ? message : ""; sendEvent({ type: "show:hold", value: state.hold, message: state.holdMessage }); addLog("ALERT", state.hold ? "SHOW HOLD activated" : "Show resumed"); }
-    else if (button.dataset.emergency === "skip") { addLog("ALERT", "Current cue skipped"); }
-    else { addLog("ALERT", "Screens frozen"); }
+    else if (button.dataset.emergency === "skip") {
+      const cueId = nextCueId();
+      if (!cueId) {
+        addLog("ALERT", "No remaining cue to skip");
+      } else {
+        state.cueStates[cueId] = "skipped";
+        sendEvent({ type: "cue:skip", cueId });
+        addLog("SKIP", `${cueId.toUpperCase()} skipped`);
+      }
+    } else {
+      state.screensFrozen = !state.screensFrozen;
+      sendEvent({ type: "screens:freeze", value: state.screensFrozen });
+      addLog("ALERT", state.screensFrozen ? "Screens frozen" : "Screens resumed");
+    }
     render();
   }));
   document.querySelectorAll("[data-admin-action=\"logout-all\"]").forEach((button) => button.addEventListener("click", () => {
