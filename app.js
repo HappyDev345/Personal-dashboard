@@ -1,34 +1,110 @@
 const scenes = [
   {
-    act: 1, number: 1, title: "The road to Moab", mics: ["Elimelech", "Mahlon", "Chilon", "Naomi"],
-    lighting: [{ cue: "LX-05", description: "Apron & extensions" }, { cue: "LX-06", description: "Blackout" }],
-    audio: [{ cue: "Audio 01", description: "Please take your seats" }],
-    music: [{ item: "Overture", source: "TRACK 01 / 02:34" }],
-    set: ["Fruit tree", "Orpah & Year 2 ready behind curtain"],
-    screens: [{ type: "ppt", file: "MoabTownThrowdown.pptx" }],
+    act: 1, number: 1, title: "Are We There Yet?", mics: ["Elimelech", "Mahlon", "Chilon", "Naomi"],
+    lighting: [{ cue: 5, description: "Apron & Extensions" }, { cue: 6, description: "Blackout" }],
+    audio: [],
+    music: [],
+    set: ["Fruit tree placed", "Orpah & Year 2 ready behind curtain"],
+    screens: [],
     script: [
-      { character: "Elimelech", line: "It’s… it’s my lungs..." },
-      { character: "Mahlon", line: "Are we there yet?", cue: true },
-      { character: "Naomi", line: "We are nearly there. Keep walking." }
+      { character: "Elimelech", line: "It’s… it’s my lungs. Don’t tell my wife…" },
+      { character: "Mahlon", line: "Are we there yet? Dad, are we there yet?" },
+      { character: "Chilon", line: "Mahlon! Wait up! Father… Wait!" },
+      { character: "Naomi", line: "Moab Town is not far away now." },
+      { character: "Elimelech", line: "Order! Order! Order!" },
+      { character: "Naomi", line: "Take one! Go on! All of you!" },
+      { character: "Naomi", line: "Well, my name is Naomi, and this is my story." }
     ]
   },
   {
-    act: 1, number: 2, title: "A new beginning", mics: ["Naomi", "Ruth", "Orpah", "Boaz"],
-    lighting: [{ cue: "LX-07", description: "Full stage, pink gobo" }, { cue: "LX-08", description: "Warm special — stage right" }],
-    audio: [{ cue: "SFX 04", description: "Market ambience" }, { cue: "Audio 02", description: "Transition sting" }],
-    music: [{ item: "Fields of Home", source: "TRACK 06 / 03:12" }],
-    set: ["Market stall", "Grain baskets", "Boaz's cloak"],
-    screens: [{ type: "ppt", file: "BethlehemMarket.pptx" }],
-    script: [{ character: "Ruth", line: "Where you go, I will go.", cue: true }, { character: "Naomi", line: "Then let us begin again." }]
+    act: 1, number: 2, title: "Welcome to Moab Town", mics: ["Orpah", "Mahlon", "Chilon", "Elimelech", "Naomi", "Ruth"],
+    lighting: [
+      { cue: 7, description: "Full stage, pink gobo & extensions" },
+      { cue: 8, description: "Full stage + extensions" },
+      { cue: 9, description: "Full stage + extensions & aisles" },
+      { cue: 10, description: "Dim stage, spots on extensions" },
+      { cue: 11, description: "Full stage" },
+      { cue: 12, description: "Blackout" },
+      { cue: 13, description: "Blackout" }
+    ],
+    audio: [],
+    music: [
+      { item: "Item 1", title: "Moab Town Throwdown Intro", performers: "Whole Band" },
+      { item: "Item 2", title: "Wedding Song 'Happy'", performers: "Year 3" }
+    ],
+    set: ["Curtains open – fast pull", "Moab Town CYC", "Year 2 dancers ready"],
+    screens: [
+      { type: "ppt", file: "Year2_MoabTownThrowdown.pptx" },
+      { type: "ppt", file: "Year3_WeddingSong.pptx" }
+    ],
+    script: [
+      { character: "Orpah", line: "Boom clap, boom de clap de clap…" },
+      { character: "Mahlon", line: "Oh Pa, I’ve been bitten by Cupid…" },
+      { character: "Chilon", line: "Mother, my heart has been lured…" },
+      { character: "Elimelech", line: "Boys, boys, boys! What’s this?" },
+      { character: "Mahlon", line: "I found her first. She is mine! She is Orpah!" },
+      { character: "Chilon", line: "This is the one. The ONLY one. Meet Ruth." },
+      { character: "Elimelech", line: "Do you Mahlon, take Orpah…" },
+      { character: "Chilon", line: "I do." },
+      { character: "Ruth", line: "I do." }
+    ]
   },
   {
-    act: 2, number: 1, title: "The threshing floor", mics: ["Ruth", "Boaz", "Naomi", "Narrator"],
-    lighting: [{ cue: "LX-14", description: "Moonlight — cool blue" }, { cue: "LX-15", description: "Fade to dawn" }],
-    audio: [{ cue: "SFX 09", description: "Night wind" }],
-    music: [{ item: "Under the Stars", source: "TRACK 11 / 04:06" }],
-    set: ["Threshing floor", "Lanterns preset", "Blanket downstage"],
-    screens: [{ type: "video", file: "NightSky.mp4" }],
-    script: [{ character: "Boaz", line: "Who is there?", cue: true }, { character: "Ruth", line: "It is Ruth. Your servant." }]
+    act: 1, number: 3, title: "Tragedy Strikes", mics: ["Naomi"],
+    lighting: [
+      { cue: 14, description: "Centre apron, blue" },
+      { cue: 15, description: "Blackout" },
+      { cue: 16, description: "Blackout" },
+      { cue: 17, description: "Centre apron, blue" },
+      { cue: 18, description: "Blackout" },
+      { cue: 19, description: "Blackout" },
+      { cue: 20, description: "Centre apron, blue" },
+      { cue: 21, description: "Blackout" },
+      { cue: 22, description: "Blackout" },
+      { cue: 23, description: "Centre apron, blue" },
+      { cue: 24, description: "Blackout" },
+      { cue: 25, description: "Blackout" },
+      { cue: 26, description: "Full stage + extensions and aisles – blues and purples" },
+      { cue: 27, description: "Blackout" },
+      { cue: 28, description: "Blackout" }
+    ],
+    audio: [],
+    music: [{ item: "Item 3", title: "Hey Brother", performers: "Year 6" }],
+    set: ["Year 6 ready behind curtains"],
+    screens: [
+      { type: "video", file: "Video1.mp4" },
+      { type: "video", file: "Video2.mp4" },
+      { type: "video", file: "Video3.mp4" },
+      { type: "ppt", file: "Year6_HeyBrother.pptx" }
+    ],
+    script: [
+      { character: "Naomi", line: "Seasons waxed and waned with contentment…" },
+      { character: "Naomi", line: "I grieved silently for my husband for ten long years…" },
+      { character: "Naomi", line: "I grieved for my eldest son too…" },
+      { character: "Naomi", line: "They have a saying down here in Moab…" }
+    ]
+  },
+  {
+    act: 1, number: 4, title: "Naomi’s Decision", mics: ["Naomi", "Orpah", "Ruth"],
+    lighting: [
+      { cue: 29, description: "Apron + Extensions" },
+      { cue: 30, description: "Full stage + extensions" },
+      { cue: 31, description: "Blackout" },
+      { cue: 32, description: "Blackout" }
+    ],
+    audio: [],
+    music: [{ item: "Item 4", title: "Achy Breaky Heart", performers: "Year 1" }],
+    set: ["Chair brought on", "Naomi brings 2 suitcases", "Year 1 ready behind curtains"],
+    screens: [{ type: "ppt", file: "Year1_AchyBreakyHeart.pptx" }],
+    script: [
+      { character: "Orpah", line: "Mother, what are you doing?" },
+      { character: "Naomi", line: "Home. Bethlehem home." },
+      { character: "Ruth", line: "Where you go Mother, I will go." },
+      { character: "Ruth", line: "Your people will be my people." },
+      { character: "Ruth", line: "Your God will be my God." },
+      { character: "Ruth", line: "Where you die, I will die." },
+      { character: "Naomi", line: "So do I." }
+    ]
   }
 ];
 
@@ -131,8 +207,8 @@ function cueRows(items, type, idPrefix = type, interactive = true) {
   return items.map((item, index) => {
     const id = item.cueId || `${idPrefix}-${index}`;
     const stateName = state.cueStates[id] || "standby";
-    const name = item.description || item.item || item.file;
-    const label = item.cue || item.type?.toUpperCase() || type.toUpperCase();
+    const name = item.description || item.title || item.item || item.file || "No description";
+    const label = item.cue ? (typeof item.cue === "number" ? `${type === "lighting" ? "LX" : type.toUpperCase()}-${item.cue}` : item.cue) : item.type?.toUpperCase() || type.toUpperCase();
     const lightingGo = state.role === "lighting" && stateName === "go";
     const controls = interactive
       ? `<button class="${lightingGo ? "go-now-button" : "small-button"}" ${lightingGo ? "disabled" : ""} data-standby="${id}">${lightingGo ? "GO NOW" : "STBY"}</button><button class="go-button" ${state.hold ? "disabled" : ""} data-go="${id}">GO</button>`
@@ -168,9 +244,22 @@ function emergencyPanel() {
 
 function specialistView(scene) {
   if (state.role === "lighting") return `<div class="panel"><div class="panel-header"><h2>Lighting cue feed</h2><span class="next-cue">${state.flashCueId ? "GO NOW" : "LISTENING FOR CALLER"}</span></div><div class="panel-body"><div class="crew-notice">Watch this panel for the caller's GO. No local controls are required.</div><div class="cue-list">${cueRows(scene.lighting, "lighting", "lighting", false)}</div></div></div>${statsPanel(scene)}`;
-  if (state.role === "audio") return `<div class="panel"><div class="panel-header"><h2>Audio status</h2><span class="next-cue">LISTENING FOR CALLER</span></div><div class="panel-body"><div class="crew-notice">Mic and playback status is informational. The show caller controls cues.</div><div class="mic-grid">${scene.mics.map((mic) => `<div class="mic-card"><div><strong>${mic}</strong><small>Mic ${scene.mics.indexOf(mic) + 1} · ${state.micStates[mic] === false ? "OFF" : "ON"}</small></div><span class="status-pill ${state.micStates[mic] !== false ? "on" : "off"}">${state.micStates[mic] !== false ? "ON" : "OFF"}</span></div>`).join("")}</div></div></div><div class="panel"><div class="panel-header"><h2>Audio & music feed</h2></div><div class="panel-body"><div class="cue-list">${cueRows(scene.audio, "audio", "audio", false)}</div><div style="height:10px"></div><div class="media-card"><div><div class="media-title">${scene.music[0].item}</div><small>${scene.music[0].source}</small></div><span class="status-pill">CALLER CONTROLLED</span></div></div></div>`;
+  if (state.role === "audio") {
+    const audioFeed = scene.audio.length
+      ? `<div class="cue-list">${cueRows(scene.audio, "audio", "audio", false)}</div>`
+      : `<div class="empty-state">No audio cues are assigned to this scene.</div>`;
+    const musicFeed = scene.music.length
+      ? scene.music.map((item) => `<div class="media-card"><div><div class="media-title">${item.title || item.item}</div><small>${item.performers || item.source || "Music cue"}</small></div><span class="status-pill">CALLER CONTROLLED</span></div>`).join("")
+      : `<div class="empty-state">No music cues are assigned to this scene.</div>`;
+    return `<div class="panel"><div class="panel-header"><h2>Audio status</h2><span class="next-cue">LISTENING FOR CALLER</span></div><div class="panel-body"><div class="crew-notice">Mic and playback status is informational. The show caller controls cues.</div><div class="mic-grid">${scene.mics.map((mic) => `<div class="mic-card"><div><strong>${mic}</strong><small>Mic ${scene.mics.indexOf(mic) + 1} · ${state.micStates[mic] === false ? "OFF" : "ON"}</small></div><span class="status-pill ${state.micStates[mic] !== false ? "on" : "off"}">${state.micStates[mic] !== false ? "ON" : "OFF"}</span></div>`).join("")}</div></div></div><div class="panel"><div class="panel-header"><h2>Audio & music feed</h2></div><div class="panel-body">${audioFeed}<div style="height:10px"></div>${musicFeed}</div></div>`;
+  }
   if (state.role === "backstage") return `<div class="panel"><div class="panel-header"><h2>Set change status</h2><span class="next-cue">WAIT FOR CALLER</span></div><div class="panel-body"><div class="crew-notice">Complete the set change when called, then report readiness to the caller.</div><div class="checklist">${scene.set.map((item, index) => `<div class="check-item ${state.checklist[index] ? "done" : ""}"><span class="check-indicator">${state.checklist[index] ? "✓" : "—"}</span>${item}</div>`).join("")}</div></div></div>${statsPanel(scene)}`;
-  if (state.role === "screens") return `<div class="panel"><div class="panel-header"><h2>Screen cue feed</h2><span class="next-cue">LISTENING FOR CALLER</span></div><div class="panel-body"><div class="crew-notice">Media playback is controlled by the show caller.</div><div class="media-card"><div><div class="media-title">${scene.screens[0].file}</div><small>${scene.screens[0].type.toUpperCase()} · Scene ${scene.act}.${scene.number}</small></div><span class="status-pill">CALLER CONTROLLED</span></div><div class="cue-list" style="margin-top:12px">${cueRows(scene.screens, "screens", "screens", false)}</div></div></div><div class="panel"><div class="panel-header"><h2>CYC background</h2></div><div class="panel-body"><div class="stat-grid"><div class="stat"><strong>BLUE</strong><span>current wash</span></div><div class="stat"><strong>3</strong><span>presets ready</span></div></div></div></div>`;
+  if (state.role === "screens") {
+    const screenPreview = scene.screens.length
+      ? `<div class="media-card"><div><div class="media-title">${scene.screens[0].file}</div><small>${scene.screens[0].type.toUpperCase()} · Scene ${scene.act}.${scene.number}</small></div><span class="status-pill">CALLER CONTROLLED</span></div>`
+      : `<div class="empty-state">No screen media is assigned to this scene.</div>`;
+    return `<div class="panel"><div class="panel-header"><h2>Screen cue feed</h2><span class="next-cue">LISTENING FOR CALLER</span></div><div class="panel-body"><div class="crew-notice">Media playback is controlled by the show caller.</div>${screenPreview}<div class="cue-list" style="margin-top:12px">${cueRows(scene.screens, "screens", "screens", false)}</div></div></div><div class="panel"><div class="panel-header"><h2>CYC background</h2></div><div class="panel-body"><div class="stat-grid"><div class="stat"><strong>BLUE</strong><span>current wash</span></div><div class="stat"><strong>3</strong><span>presets ready</span></div></div></div></div>`;
+  }
   if (state.role === "admin") return `<div class="panel full-width"><div class="panel-header"><h2>Administrator control room</h2><span class="next-cue">FULL ACCESS</span></div><div class="panel-body"><div class="crew-notice admin-notice">Luke has full system permissions. Use this view to monitor stations and test show controls.</div><div class="stat-grid"><div class="stat"><strong>${scene.lighting.length + scene.audio.length}</strong><span>active cues</span></div><div class="stat"><strong>${scene.mics.length}</strong><span>actors mic'd</span></div><div class="stat"><strong>LIVE</strong><span>show status</span></div><div class="stat"><strong>4</strong><span>stations online</span></div></div><textarea class="notes" placeholder="Add administrator notes..."></textarea></div></div>${callerView(scene)}`;
   return `<div class="panel full-width"><div class="panel-header"><h2>Director overview</h2><span class="next-cue">READ-ONLY SHOW MONITOR</span></div><div class="panel-body"><div class="crew-notice">The show caller controls all cues and emergency actions. This view monitors the live system.</div><div class="stat-grid"><div class="stat"><strong>${scene.lighting.length + scene.audio.length}</strong><span>active cues</span></div><div class="stat"><strong>${scene.mics.length}</strong><span>actors mic'd</span></div><div class="stat"><strong>LIVE</strong><span>show status</span></div><div class="stat"><strong>4</strong><span>stations online</span></div></div><textarea class="notes" placeholder="Add private rehearsal notes..."></textarea></div></div>`;
 }
