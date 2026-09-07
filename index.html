@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#081321" />
+    <title>Bittersweet Production Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark">B</span>
+          <div>
+            <strong>BITTERSWEET</strong>
+            <small>production desk</small>
+          </div>
+        </div>
+
+        <div class="sidebar-label">Scenes</div>
+        <nav id="scene-list" class="scene-list" aria-label="Scene navigation"></nav>
+
+        <div class="sidebar-footer">
+          <div class="connection"><span class="status-dot"></span><span>Show network online</span></div>
+          <span class="build">v0.9.4 • rehearsal</span>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="breadcrumb"><span id="act-label">ACT I</span><span class="slash">/</span><strong id="scene-heading">Scene 1 · The road to Moab</strong></div>
+          <div class="topbar-actions">
+            <label class="role-select-label" for="role-select">View</label>
+            <select id="role-select" aria-label="Dashboard role">
+              <option value="caller">Show Caller</option>
+              <option value="lighting">Lighting Tech</option>
+              <option value="audio">Audio Tech</option>
+              <option value="backstage">Backstage Crew</option>
+              <option value="screens">Side Screen Operator</option>
+              <option value="director">Director</option>
+            </select>
+            <button class="icon-button" id="timer-button" title="Pause timer" aria-label="Pause timer">Ⅱ</button>
+            <div class="timer" id="timer">00:14:32</div>
+            <div class="avatar">JK</div>
+          </div>
+        </header>
+
+        <section class="content">
+          <div class="page-heading">
+            <div>
+              <p class="eyebrow" id="role-eyebrow">SHOW CALLER VIEW</p>
+              <h1 id="page-title">Scene 1 <span>·</span> The road to Moab</h1>
+            </div>
+            <div class="sync-status"><span class="pulse-dot"></span><span id="sync-label">All stations synced</span></div>
+          </div>
+
+          <div id="alert-banner" class="alert-banner" hidden>
+            <strong id="alert-title">SHOW HOLD</strong><span id="alert-copy">All cue advancement is paused.</span>
+            <button id="resume-button" class="text-button">Resume show</button>
+          </div>
+
+          <div id="dashboard" class="dashboard-grid"></div>
+        </section>
+      </main>
+
+      <footer class="bottom-bar">
+        <div class="log-title"><span class="live-dot"></span><strong>LIVE CUE LOG</strong></div>
+        <div id="cue-log" class="cue-log" aria-live="polite"></div>
+        <div class="go-state" id="go-state"><span class="go-dot"></span>STANDBY</div>
+      </footer>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>
