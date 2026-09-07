@@ -109,6 +109,15 @@ h1 span { color: var(--gold); }
 .mic-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }.mic-card { background: var(--panel-2); padding: 12px; border-radius: 7px; display: flex; justify-content: space-between; align-items: center; }.mic-card small { color: var(--muted); display: block; margin-top: 3px; }.toggle { width: 34px; height: 19px; border-radius: 12px; background: #345269; border: 0; position: relative; }.toggle::after { content: ""; width: 13px; height: 13px; background: #a3b3bf; position: absolute; left: 3px; top: 3px; border-radius: 50%; transition: .15s; }.toggle.on { background: var(--green); }.toggle.on::after { left: 18px; background: white; }
 .status-pill { color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 5px 8px; font-size: 9px; font-weight: 800; letter-spacing: .06em; white-space: nowrap; }.status-pill.on { color: #9ad7ae; border-color: #347a50; }.status-pill.off { color: #ff9b9b; border-color: #8e4650; }.crew-notice { margin-bottom: 13px; padding: 10px 12px; border-left: 3px solid var(--gold); background: #1c3448; color: #c8d5df; font-size: 12px; }
 .admin-notice { border-left-color: var(--red); background: #3a2630; }
+.user-list, .diagnostic-list { display: grid; gap: 8px; }
+.user-row, .diagnostic-list > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px; background: var(--panel-2); border-radius: 6px; }
+.user-row small { display: block; margin-top: 4px; color: var(--muted); }
+.device-label, .diagnostic-list span { color: var(--muted); font-size: 11px; }
+.diagnostic-list strong { color: #9ad7ae; font-size: 11px; }
+.empty-state { color: var(--muted); margin: 0; }
+.admin-log { display: grid; gap: 6px; margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+.admin-log div { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
+.admin-log strong { color: var(--text); }
 .media-card { display: flex; align-items: center; justify-content: space-between; padding: 15px; background: linear-gradient(115deg, #19384d, #142b40); border-radius: 7px; }.media-title { font-weight: 700; }.media-card small { color: var(--muted); display: block; margin-top: 5px; }.play-button { width: 40px; height: 40px; border-radius: 50%; background: var(--gold); color: var(--navy); border: 0; font-weight: 800; }
 .notes { min-height: 100px; width: 100%; resize: vertical; background: var(--navy-2); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 11px; font: 13px Inter; }
 .emergency-panel { border-color: #6c3540; }.emergency-panel .panel-header { background: #2b1d2a; }.emergency-controls { display: flex; gap: 10px; }.emergency-button { flex: 1; padding: 13px 8px; border-radius: 6px; border: 1px solid #8e4650; background: #431f29; color: #ffb0b0; font-weight: 800; font-size: 11px; }.emergency-button:hover { background: #6a2932; }

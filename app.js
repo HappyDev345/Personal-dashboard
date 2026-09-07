@@ -36,6 +36,7 @@ const state = {
   sceneIndex: 0, role: "caller", timerSeconds: 872, timerPaused: false, hold: false,
   cueStates: {}, micStates: { Elimelech: true, Mahlon: true, Chilon: false, Naomi: true },
   flashCueId: null, user: null,
+  adminData: null,
   checklist: {}, logs: [{ time: "14:31", text: "System ready", type: "SYSTEM" }]
 };
 
@@ -95,7 +96,10 @@ function connectSocket() {
   });
   socket.addEventListener("message", (message) => {
     const payload = JSON.parse(message.data);
-    if (payload.type === "event") {
+    if (payload.type === "admin:update" && state.user?.username === "luke") {
+      state.adminData = payload.data;
+      if (state.role === "admin") render();
+    } else if (payload.type === "event") {
       handleRemoteEvent(payload.event);
     } else if (payload.type === "state:init" || payload.type === "state:update") {
       applyRemoteState(payload.state);
@@ -105,7 +109,7 @@ function connectSocket() {
 
 function renderScenes() {
   $("#scene-list").innerHTML = scenes.map((scene, index) => `
-    <button class="scene-button ${index === state.sceneIndex ? "active" : ""}" data-scene="${index}" ${state.role === "caller" ? "" : "disabled"}>
+    <button class="scene-button ${index === state.sceneIndex ? "active" : ""}" data-scene="${index}" ${["caller", "admin"].includes(state.user?.role || state.role) ? "" : "disabled"}>
       <span class="scene-number">${scene.act}.${scene.number}</span>
       <span><strong>Scene ${scene.number}</strong><small>${scene.title}</small></span>
     </button>`).join("");
@@ -197,6 +201,14 @@ function bindEvents() {
   const ready = $("[data-ready]"); if (ready) ready.addEventListener("click", () => { addLog("READY", "Backstage set marked ready"); renderLog(); ready.textContent = "SET READY ✓"; });
 }
 
+function adminView() {
+  const data = state.adminData || { uptimeSeconds: 0, clients: 0, users: [], lastEvent: null, recentEvents: [] };
+  const uptime = `${Math.floor(data.uptimeSeconds / 3600)}h ${Math.floor((data.uptimeSeconds % 3600) / 60)}m`;
+  return `<div class="panel full-width"><div class="panel-header"><h2>Administrator control room</h2><span class="next-cue">LUKE ONLY · FULL ACCESS</span></div><div class="panel-body"><div class="crew-notice admin-notice">Private technical monitor. This view is available only to Luke.</div><div class="stat-grid"><div class="stat"><strong>ONLINE</strong><span>backend status</span></div><div class="stat"><strong>${data.clients}</strong><span>connected clients</span></div><div class="stat"><strong>${data.users.length}</strong><span>logged-in stations</span></div><div class="stat"><strong>${uptime}</strong><span>server uptime</span></div></div></div></div>
+    <div class="panel"><div class="panel-header"><h2>Connected stations</h2><small>Live WebSocket registry</small></div><div class="panel-body"><div class="user-list">${data.users.length ? data.users.map((user) => `<div class="user-row"><div><strong>${user.displayName}</strong><small>${user.username} · ${user.role}</small></div><span class="device-label">${user.device}</span></div>`).join("") : '<p class="empty-state">No connected stations.</p>'}</div></div>
+    <div class="panel"><div class="panel-header"><h2>Backend diagnostics</h2><small>Live server telemetry</small></div><div class="panel-body"><div class="diagnostic-list"><div><span>WebSocket</span><strong>CONNECTED</strong></div><div><span>State store</span><strong>IN MEMORY</strong></div><div><span>Last event</span><strong>${data.lastEvent ? data.lastEvent.type : "NONE"}</strong></div><div><span>Received</span><strong>${data.lastEvent ? new Date(data.lastEvent.receivedAt).toLocaleTimeString() : "—"}</strong></div></div><div class="admin-log">${data.recentEvents.slice(0, 6).map((event) => `<div><strong>${event.type}</strong><span>${new Date(event.receivedAt).toLocaleTimeString()}</span></div>`).join("") || '<p class="empty-state">No events recorded.</p>'}</div></div></div>`;
+}
+
 function renderLog() { $("#cue-log").innerHTML = state.logs.map((log) => `<span class="log-entry"><strong>${log.time}</strong> ${log.type} · ${log.text}</span>`).join(""); }
 function render() {
   const scene = currentScene();
@@ -206,7 +218,7 @@ function render() {
   $("#role-eyebrow").textContent = `${roleNames[state.role]} VIEW`;
   $("#alert-banner").hidden = !state.hold;
   $("#alert-copy").textContent = state.hold ? "All cue advancement is paused." : "";
-  $("#dashboard").innerHTML = state.role === "caller" ? callerView(scene) : specialistView(scene);
+  $("#dashboard").innerHTML = state.role === "caller" ? callerView(scene) : state.role === "admin" ? adminView() : specialistView(scene);
   renderScenes(); renderLog(); bindEvents();
 }
 

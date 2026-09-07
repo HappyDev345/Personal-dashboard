@@ -77,7 +77,7 @@ The server includes role-based login. On Render, add a `JWT_SECRET` environment 
 ]
 ```
 
-Add one object for each crew member. The `caller` and `admin` roles can send cue, scene, and show-control events. All other roles receive read-only dashboards. The `admin` role includes a dedicated full-access administrator view.
+Add one object for each crew member. The `caller` and `admin` roles can send cue, scene, and show-control events. All other roles receive read-only dashboards. The `admin` role is restricted to the username `luke` and includes a private full-access administrator view with connected-station and backend diagnostics.
 
 ## Project Structure
 

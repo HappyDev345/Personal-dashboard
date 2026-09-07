@@ -8,6 +8,9 @@ const server = http.createServer(app);
 const webSocketServer = new WebSocketServer({ server });
 const port = process.env.PORT || 3000;
 const jwtSecret = process.env.JWT_SECRET || "development-only-change-this-secret";
+const startedAt = new Date();
+const connectedUsers = new Map();
+const eventLog = [];
 const demoUsers = [
   { username: "caller", password: "bittersweet", role: "caller", displayName: "Show Caller" },
   { username: "luke", password: "bittersweet", role: "admin", displayName: "Luke Kohlhoff" },
@@ -34,7 +37,7 @@ app.use(express.json());
 app.post("/api/login", (request, response) => {
   const { username, password } = request.body || {};
   const user = configuredUsers.find((candidate) => candidate.username === username && candidate.password === password);
-  if (!user) return response.status(401).json({ error: "Invalid username or password." });
+  if (!user || (user.role === "admin" && user.username !== "luke")) return response.status(401).json({ error: "Invalid username or password." });
   const token = jwt.sign({ username: user.username, role: user.role, displayName: user.displayName }, jwtSecret, { expiresIn: "12h" });
   return response.json({ token, user: { username: user.username, role: user.role, displayName: user.displayName } });
 });
@@ -66,6 +69,30 @@ function broadcast(message) {
   });
 }
 
+function getDevice(userAgent = "") {
+  const device = /iPad|Tablet|Android/i.test(userAgent) ? "Tablet" : /Mobile|iPhone|Android/i.test(userAgent) ? "Mobile" : "Desktop";
+  const browser = /Edg/i.test(userAgent) ? "Edge" : /Chrome/i.test(userAgent) ? "Chrome" : /Firefox/i.test(userAgent) ? "Firefox" : /Safari/i.test(userAgent) ? "Safari" : "Browser";
+  return `${device} · ${browser}`;
+}
+
+function adminSnapshot() {
+  return {
+    uptimeSeconds: Math.floor((Date.now() - startedAt.getTime()) / 1000),
+    clients: webSocketServer.clients.size,
+    users: [...connectedUsers.values()],
+    lastEvent: showState.lastEvent,
+    recentEvents: eventLog,
+    state: showState
+  };
+}
+
+function broadcastAdminSnapshot() {
+  const payload = JSON.stringify({ type: "admin:update", data: adminSnapshot() });
+  webSocketServer.clients.forEach((client) => {
+    if (client.readyState === 1 && client.user?.username === "luke") client.send(payload);
+  });
+}
+
 webSocketServer.on("connection", (socket, request) => {
   const requestUrl = new URL(request.url, `http://${request.headers.host || "localhost"}`);
   const user = authenticateToken(requestUrl.searchParams.get("token"));
@@ -73,7 +100,19 @@ webSocketServer.on("connection", (socket, request) => {
     socket.close(1008, "Authentication required.");
     return;
   }
+  socket.user = user;
+  const connectionId = `${user.username}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  connectedUsers.set(connectionId, {
+    id: connectionId,
+    username: user.username,
+    displayName: user.displayName,
+    role: user.role,
+    device: getDevice(request.headers["user-agent"]),
+    connectedAt: new Date().toISOString()
+  });
   socket.send(JSON.stringify({ type: "state:init", state: showState }));
+  if (user.username === "luke") socket.send(JSON.stringify({ type: "admin:update", data: adminSnapshot() }));
+  broadcastAdminSnapshot();
 
   socket.on("message", (rawMessage) => {
     let message;
@@ -88,7 +127,7 @@ webSocketServer.on("connection", (socket, request) => {
       socket.send(JSON.stringify({ type: "error", message: "Event type is required." }));
       return;
     }
-    if (!["caller", "admin"].includes(user.role)) {
+    if (!["caller", "admin"].includes(user.role) || (user.role === "admin" && user.username !== "luke")) {
       socket.send(JSON.stringify({ type: "error", message: "Only the show caller can control cues." }));
       return;
     }
@@ -110,8 +149,15 @@ webSocketServer.on("connection", (socket, request) => {
     }
 
     showState.lastEvent = { ...message, receivedAt: new Date().toISOString() };
+    eventLog.unshift(showState.lastEvent);
+    eventLog.splice(20);
     broadcast({ type: "event", event: showState.lastEvent });
     broadcast({ type: "state:update", state: showState, event: showState.lastEvent });
+    broadcastAdminSnapshot();
+  });
+  socket.on("close", () => {
+    connectedUsers.delete(connectionId);
+    broadcastAdminSnapshot();
   });
 });
 
