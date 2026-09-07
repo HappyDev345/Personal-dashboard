@@ -38,7 +38,7 @@
         <nav id="scene-list" class="scene-list" aria-label="Scene navigation"></nav>
 
         <div class="sidebar-footer">
-          <div class="connection"><span class="status-dot"></span><span>Show network online</span></div>
+          <div class="connection" id="connection-status"><span class="status-dot"></span><span>Checking show network…</span></div>
           <span class="build">v0.9.4 • rehearsal</span>
         </div>
       </aside>
@@ -70,12 +70,12 @@
               <p class="eyebrow" id="role-eyebrow">SHOW CALLER VIEW</p>
               <h1 id="page-title">Scene 1 <span>·</span> The road to Moab</h1>
             </div>
-            <div class="sync-status"><span class="pulse-dot"></span><span id="sync-label">All stations synced</span></div>
+            <div class="sync-status"><span class="pulse-dot"></span><span id="sync-label">Checking show network…</span></div>
           </div>
 
           <div id="alert-banner" class="alert-banner" hidden>
-            <strong id="alert-title">SHOW HOLD</strong><span id="alert-copy">All cue advancement is paused.</span>
-            <button id="resume-button" class="text-button">Resume show</button>
+            <strong id="alert-title">SHOW HOLD</strong><span id="alert-copy"></span>
+            <button id="resume-button" class="text-button" hidden>Resume show</button>
           </div>
 
           <div id="dashboard" class="dashboard-grid"></div>

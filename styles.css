@@ -44,8 +44,10 @@ button { cursor: pointer; }
 .scene-button small { display: block; margin-top: 3px; color: inherit; opacity: .75; font-size: 11px; }
 .sidebar-footer { margin-top: auto; padding: 15px 10px 0; border-top: 1px solid #163049; color: var(--muted); font-size: 11px; }
 .connection { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; color: #9ad7ae; }
+.connection.offline { color: #ff9b9b; }
 .status-dot, .pulse-dot, .live-dot, .go-dot { display: inline-block; border-radius: 50%; }
 .status-dot { width: 7px; height: 7px; background: var(--green); }
+.connection.offline .status-dot { background: var(--red); }
 .build { color: #557086; }
 .main-content { min-width: 0; overflow: auto; }
 .topbar { min-height: 74px; padding: 0 32px; border-bottom: 1px solid #163049; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
@@ -67,9 +69,12 @@ h1 span { color: var(--gold); }
 .sync-status { color: #9ad7ae; font-size: 12px; display: flex; gap: 8px; align-items: center; }
 .pulse-dot { width: 8px; height: 8px; background: var(--green); box-shadow: 0 0 0 4px #27ae6022; }
 .alert-banner { display: flex; align-items: center; gap: 15px; padding: 14px 17px; background: #4e252c; border: 1px solid #a84750; border-radius: 8px; margin-bottom: 20px; }
+.alert-banner[hidden] { display: none; }
 .alert-banner strong { color: #ff9b9b; }
 .alert-banner span { color: #f3c1c1; }
 .text-button { margin-left: auto; background: transparent; border: 0; color: var(--gold); font-weight: 700; }
+.hold-message-input { min-width: 220px; flex: 1; border: 1px solid var(--line); border-radius: 5px; background: var(--navy-2); color: var(--text); padding: 8px 10px; }
+.admin-actions { margin-top: 18px; }
 .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(320px, .95fr); gap: 18px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .panel-header { padding: 17px 19px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); }

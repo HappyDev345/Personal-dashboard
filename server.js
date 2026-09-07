@@ -40,6 +40,7 @@ const configuredUsers = loadUsers();
 const showState = {
   sceneIndex: 0,
   hold: false,
+  holdMessage: "",
   timerStartedAt: Date.now(),
   timerPausedAt: null,
   timerPaused: false,
@@ -188,6 +189,16 @@ webSocketServer.on("connection", (socket, request) => {
       showState.cueStates[message.cueId] = "go";
     } else if (message.type === "show:hold") {
       showState.hold = Boolean(message.value);
+      showState.holdMessage = showState.hold && typeof message.message === "string" ? message.message.trim().slice(0, 160) : "";
+    } else if (message.type === "admin:logout-all" && user.username === "luke") {
+      webSocketServer.clients.forEach((client) => {
+        if (client !== socket && client.readyState === 1) client.close(4001, "Signed out by Luke.");
+      });
+      showState.lastEvent = { type: message.type, receivedAt: new Date().toISOString() };
+      eventLog.unshift(showState.lastEvent);
+      eventLog.splice(20);
+      broadcastAdminSnapshot();
+      return;
     } else if (message.type === "mic:toggle" && typeof message.actor === "string") {
       showState.micStates[message.actor] = Boolean(message.value);
     } else {

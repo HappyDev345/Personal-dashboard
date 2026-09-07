@@ -109,9 +109,9 @@ const scenes = [
 ];
 
 const state = {
-  sceneIndex: 0, role: "caller", timerSeconds: 0, timerPaused: false, hold: false,
+  sceneIndex: 0, role: "caller", timerSeconds: 0, timerPaused: false, hold: false, holdMessage: "",
   cueStates: {}, micStates: { Elimelech: true, Mahlon: true, Chilon: false, Naomi: true },
-  flashCueId: null, user: null,
+  flashCueId: null, user: null, socketConnected: false,
   adminData: null,
   checklist: {}, logs: [{ time: "14:31", text: "System ready", type: "SYSTEM" }]
 };
@@ -131,6 +131,7 @@ function applyRemoteState(remoteState) {
   if (typeof remoteState.hold === "boolean") state.hold = remoteState.hold;
   if (Number.isInteger(remoteState.timerSeconds)) state.timerSeconds = remoteState.timerSeconds;
   if (typeof remoteState.timerPaused === "boolean") state.timerPaused = remoteState.timerPaused;
+  if (typeof remoteState.holdMessage === "string") state.holdMessage = remoteState.holdMessage;
   if (remoteState.cueStates) state.cueStates = { ...remoteState.cueStates };
   if (remoteState.micStates) state.micStates = { ...state.micStates, ...remoteState.micStates };
   render();
@@ -158,7 +159,10 @@ function handleRemoteEvent(event) {
     state.cueStates = {};
     addLog("SYSTEM", "Scene changed by show caller");
   } else if (event.type === "show:hold") {
-    addLog("ALERT", event.value ? "SHOW HOLD received" : "Show resumed");
+    state.hold = Boolean(event.value);
+    state.holdMessage = state.hold && typeof event.message === "string" ? event.message : "";
+    addLog("ALERT", state.hold ? "SHOW HOLD received" : "Show resumed");
+    render();
   }
 }
 
@@ -169,8 +173,17 @@ function connectSocket() {
     .then((response) => response.ok ? response.json() : Promise.reject(new Error("Unable to authorize realtime connection")))
     .then(({ ticket }) => {
       socket = new WebSocket(`${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}?ticket=${encodeURIComponent(ticket)}`);
-      socket.addEventListener("open", () => { $("#sync-label").textContent = "Connected to show server"; });
-      socket.addEventListener("close", () => { $("#sync-label").textContent = "Offline — local controls only"; });
+      socket.addEventListener("open", () => { state.socketConnected = true; updateConnectionStatus(); });
+      socket.addEventListener("close", (event) => {
+        state.socketConnected = false;
+        updateConnectionStatus();
+        if (event.code === 4001) {
+          localStorage.removeItem("bittersweet-token");
+          state.user = null;
+          $("#login-screen").hidden = false;
+          $(".app-shell").style.visibility = "hidden";
+        }
+      });
       socket.addEventListener("message", (message) => {
         let payload;
         try { payload = JSON.parse(message.data); } catch { $("#sync-label").textContent = "Invalid server message"; return; }
@@ -184,7 +197,7 @@ function connectSocket() {
         }
       });
     })
-    .catch(() => { $("#sync-label").textContent = "Realtime connection unavailable"; });
+    .catch(() => { state.socketConnected = false; updateConnectionStatus(); });
 }
 
 function renderScenes() {
@@ -239,7 +252,7 @@ function statsPanel(scene) {
 }
 
 function emergencyPanel() {
-  return `<div class="panel emergency-panel full-width"><div class="panel-header"><h2>Emergency controls</h2><small>Visible to caller & director</small></div><div class="panel-body emergency-controls"><button class="emergency-button" data-emergency="hold">${state.hold ? "RESUME SHOW" : "HOLD SHOW"}</button><button class="emergency-button" data-emergency="skip">SKIP CUE</button><button class="emergency-button" data-emergency="freeze">FREEZE SCREENS</button></div></div>`;
+  return `<div class="panel emergency-panel full-width"><div class="panel-header"><h2>Emergency controls</h2><small>Caller and Luke only</small></div><div class="panel-body emergency-controls"><button class="emergency-button" data-emergency="hold">${state.hold ? "RESUME SHOW" : "HOLD SHOW"}</button><input class="hold-message-input" data-hold-message maxlength="160" placeholder="Optional hold message" value="${escapeHtml(state.holdMessage)}" /><button class="emergency-button" data-emergency="skip">SKIP CUE</button><button class="emergency-button" data-emergency="freeze">FREEZE SCREENS</button></div></div>`;
 }
 
 function specialistView(scene) {
@@ -279,18 +292,19 @@ function bindEvents() {
     $("#go-state").innerHTML = '<span class="go-dot" style="background:#9ad7ae"></span>GO FIRED';
     $("#sync-label").textContent = "Cue dispatched to all stations";
     render();
-    setTimeout(() => { $("#go-state").innerHTML = '<span class="go-dot"></span>STANDBY'; $("#sync-label").textContent = "All stations synced"; }, 1600);
+    setTimeout(() => { $("#go-state").innerHTML = '<span class="go-dot"></span>STANDBY'; updateConnectionStatus(); }, 1600);
   }));
   document.querySelectorAll("[data-standby]").forEach((button) => button.addEventListener("click", () => { state.cueStates[button.dataset.standby] = "standby"; sendEvent({ type: "cue:standby", cueId: button.dataset.standby }); addLog("STBY", `${button.dataset.standby.toUpperCase()} standing by`); render(); }));
   document.querySelectorAll("[data-mic]").forEach((button) => button.addEventListener("click", () => { state.micStates[button.dataset.mic] = state.micStates[button.dataset.mic] === false; sendEvent({ type: "mic:toggle", actor: button.dataset.mic, value: state.micStates[button.dataset.mic] }); addLog("MIC", `${button.dataset.mic} mic ${state.micStates[button.dataset.mic] ? "on" : "off"}`); render(); }));
   document.querySelectorAll("[data-check]").forEach((input) => input.addEventListener("change", () => { state.checklist[input.dataset.check] = input.checked; render(); }));
   document.querySelectorAll("[data-play]").forEach((button) => button.addEventListener("click", () => { button.textContent = button.textContent === "▶" ? "Ⅱ" : "▶"; addLog("MEDIA", button.textContent === "Ⅱ" ? "Playback started" : "Playback paused"); renderLog(); }));
   document.querySelectorAll("[data-emergency]").forEach((button) => button.addEventListener("click", () => {
-    if (button.dataset.emergency === "hold") { state.hold = !state.hold; sendEvent({ type: "show:hold", value: state.hold }); addLog("ALERT", state.hold ? "SHOW HOLD activated" : "Show resumed"); }
+    if (button.dataset.emergency === "hold") { state.hold = !state.hold; const message = $("[data-hold-message]")?.value.trim() || ""; state.holdMessage = state.hold ? message : ""; sendEvent({ type: "show:hold", value: state.hold, message: state.holdMessage }); addLog("ALERT", state.hold ? "SHOW HOLD activated" : "Show resumed"); }
     else if (button.dataset.emergency === "skip") { addLog("ALERT", "Current cue skipped"); }
     else { addLog("ALERT", "Screens frozen"); }
     render();
   }));
+  document.querySelectorAll("[data-admin-action=\"logout-all\"]").forEach((button) => button.addEventListener("click", () => { sendEvent({ type: "admin:logout-all" }); addLog("ADMIN", "All other stations signed out"); renderLog(); }));
   const ready = $("[data-ready]"); if (ready) ready.addEventListener("click", () => { addLog("READY", "Backstage set marked ready"); renderLog(); ready.textContent = "SET READY ✓"; });
 }
 
@@ -302,7 +316,8 @@ function adminView() {
     const connected = data.users.filter((user) => user.role === role).length;
     return `<div class="system-status"><span class="status-light ${connected ? "online" : ""}"></span><div><strong>${role.toUpperCase()}</strong><small>${connected ? `${connected} station online` : "No station connected"}</small></div></div>`;
   }).join("");
-  return `<div class="panel full-width"><div class="panel-header"><h2>Administrator control room</h2><span class="next-cue">LUKE ONLY · FULL ACCESS</span></div><div class="panel-body"><div class="crew-notice admin-notice">Private technical monitor. This view is available only to Luke.</div><div class="stat-grid"><div class="stat"><strong>ONLINE</strong><span>backend status</span></div><div class="stat"><strong>${data.clients}</strong><span>connected clients</span></div><div class="stat"><strong>${data.users.length}</strong><span>logged-in stations</span></div><div class="stat"><strong>${uptime}</strong><span>server uptime</span></div></div></div></div>
+  const caller = data.users.find((user) => user.role === "caller");
+  return `<div class="panel full-width"><div class="panel-header"><h2>Administrator control room</h2><span class="next-cue">LUKE ONLY · FULL ACCESS</span></div><div class="panel-body"><div class="crew-notice admin-notice">Private technical monitor. This view is available only to Luke.</div><div class="stat-grid"><div class="stat"><strong>ONLINE</strong><span>backend status</span></div><div class="stat"><strong>${data.clients}</strong><span>connected clients</span></div><div class="stat"><strong>${data.users.length}</strong><span>logged-in stations</span></div><div class="stat"><strong>${caller ? escapeHtml(caller.displayName) : "OFFLINE"}</strong><span>show caller logged in</span></div></div><button class="emergency-button" data-admin-action="logout-all">LOG OUT EVERYONE ELSE</button></div></div>
     <div class="panel full-width"><div class="panel-header"><h2>Production systems</h2><small>Scene ${scene.act}.${scene.number} · ${scene.title}</small></div><div class="panel-body"><div class="system-grid">${stationStatus}</div><div class="cue-summary"><div><strong>${scene.lighting.length}</strong><span>lighting cues</span></div><div><strong>${scene.audio.length}</strong><span>audio cues</span></div><div><strong>${scene.music.length}</strong><span>music items</span></div><div><strong>${scene.screens.length}</strong><span>screen cues</span></div></div></div></div>
     <div class="panel"><div class="panel-header"><h2>Connected stations</h2><small>Live WebSocket registry</small></div><div class="panel-body"><div class="user-list">${data.users.length ? data.users.map((user) => `<div class="user-row"><div><strong>${escapeHtml(user.displayName)}</strong><small>${escapeHtml(user.username)} · ${escapeHtml(user.role)}</small></div><span class="device-label">${escapeHtml(user.device)}</span></div>`).join("") : '<p class="empty-state">No connected stations.</p>'}</div></div>
     <div class="panel"><div class="panel-header"><h2>Backend diagnostics</h2><small>Live server telemetry</small></div><div class="panel-body"><div class="diagnostic-list"><div><span>WebSocket</span><strong>CONNECTED</strong></div><div><span>State store</span><strong>IN MEMORY</strong></div><div><span>Last event</span><strong>${escapeHtml(data.lastEvent ? data.lastEvent.type : "NONE")}</strong></div><div><span>Received</span><strong>${escapeHtml(data.lastEvent ? new Date(data.lastEvent.receivedAt).toLocaleTimeString() : "—")}</strong></div></div><div class="admin-log">${data.recentEvents.slice(0, 6).map((event) => `<div><strong>${escapeHtml(event.type)}</strong><span>${escapeHtml(new Date(event.receivedAt).toLocaleTimeString())}</span></div>`).join("") || '<p class="empty-state">No events recorded.</p>'}</div></div></div>`;
@@ -310,6 +325,25 @@ function adminView() {
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character]);
+}
+
+function updateConnectionStatus() {
+  const label = state.socketConnected ? "Show network online" : "Show network offline";
+  const connection = $("#connection-status");
+  const syncLabel = $("#sync-label");
+  if (connection) {
+    connection.classList.toggle("offline", !state.socketConnected);
+    connection.querySelector("span:last-child").textContent = label;
+  }
+  if (syncLabel) syncLabel.textContent = state.socketConnected ? "Live show network connected" : "Offline — reconnecting";
+}
+
+function updateTimerButton() {
+  const button = $("#timer-button");
+  if (!button) return;
+  button.textContent = state.timerPaused ? "▶" : "Ⅱ";
+  button.title = state.timerPaused ? "Resume timer" : "Pause timer";
+  button.setAttribute("aria-label", button.title);
 }
 
 function renderLog() { $("#cue-log").innerHTML = state.logs.map((log) => `<span class="log-entry"><strong>${log.time}</strong> ${log.type} · ${log.text}</span>`).join(""); }
@@ -320,7 +354,10 @@ function render() {
   $("#page-title").innerHTML = `Scene ${scene.number} <span>·</span> ${scene.title}`;
   $("#role-eyebrow").textContent = `${roleNames[state.role]} VIEW`;
   $("#alert-banner").hidden = !state.hold;
-  $("#alert-copy").textContent = state.hold ? "All cue advancement is paused." : "";
+  $("#alert-copy").textContent = state.holdMessage || "All cue advancement is paused.";
+  $("#resume-button").hidden = !state.hold || !["caller", "admin"].includes(state.user?.role);
+  updateTimerButton();
+  updateConnectionStatus();
   $("#dashboard").innerHTML = state.role === "caller" ? callerView(scene) : state.role === "admin" ? adminView() : specialistView(scene);
   renderScenes(); renderLog(); bindEvents();
 }
@@ -331,10 +368,11 @@ function updateAdminOption(user) {
   option.hidden = !isLuke;
   option.disabled = !isLuke;
   $("#timer-button").disabled = !["caller", "admin"].includes(user?.role);
+  updateTimerButton();
 }
 
 $("#role-select").addEventListener("change", (event) => { if (!["caller", "admin"].includes(state.user?.role || state.role)) return; state.role = event.target.value; addLog("SYSTEM", `${roleNames[state.role]} view selected`); render(); });
-$("#resume-button").addEventListener("click", () => { state.hold = false; sendEvent({ type: "show:hold", value: false }); addLog("ALERT", "Show resumed"); render(); });
+$("#resume-button").addEventListener("click", () => { state.hold = false; state.holdMessage = ""; sendEvent({ type: "show:hold", value: false, message: "" }); addLog("ALERT", "Show resumed"); render(); });
 $("#timer-button").addEventListener("click", () => {
   const nextPaused = !state.timerPaused;
   sendEvent({ type: nextPaused ? "timer:pause" : "timer:resume" });
