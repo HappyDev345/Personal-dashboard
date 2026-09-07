@@ -212,6 +212,16 @@ function render() {
 $("#role-select").addEventListener("change", (event) => { if (state.role !== "caller") return; state.role = event.target.value; addLog("SYSTEM", `${roleNames[state.role]} view selected`); render(); });
 $("#resume-button").addEventListener("click", () => { state.hold = false; sendEvent({ type: "show:hold", value: false }); addLog("ALERT", "Show resumed"); render(); });
 $("#timer-button").addEventListener("click", () => { state.timerPaused = !state.timerPaused; $("#timer-button").textContent = state.timerPaused ? "▶" : "Ⅱ"; $("#timer-button").title = state.timerPaused ? "Resume timer" : "Pause timer"; });
+$("#sign-out-button").addEventListener("click", () => {
+  localStorage.removeItem("bittersweet-token");
+  if (socket) socket.close();
+  socket = null;
+  state.user = null;
+  $("#login-form").reset();
+  $("#login-error").textContent = "";
+  $("#login-screen").hidden = false;
+  $(".app-shell").style.visibility = "hidden";
+});
 setInterval(() => { if (!state.timerPaused) { state.timerSeconds += 1; const h = String(Math.floor(state.timerSeconds / 3600)).padStart(2, "0"); const m = String(Math.floor((state.timerSeconds % 3600) / 60)).padStart(2, "0"); const s = String(state.timerSeconds % 60).padStart(2, "0"); $("#timer").textContent = `${h}:${m}:${s}`; } }, 1000);
 render();
 
