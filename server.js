@@ -61,6 +61,7 @@ webSocketServer.on("connection", (socket) => {
     }
 
     showState.lastEvent = { ...message, receivedAt: new Date().toISOString() };
+    broadcast({ type: "event", event: showState.lastEvent });
     broadcast({ type: "state:update", state: showState, event: showState.lastEvent });
   });
 });

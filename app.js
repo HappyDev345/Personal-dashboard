@@ -59,13 +59,18 @@ function applyRemoteState(remoteState) {
   render();
 }
 
+function applyCueEvent(event) {
+  if (!event || typeof event.cueId !== "string") return;
+  state.cueStates[event.cueId] = event.type === "cue:go" ? "go" : "standby";
+  state.flashCueId = event.type === "cue:go" ? event.cueId : null;
+  addLog(event.type === "cue:go" ? "GO" : "STBY", `${event.cueId.toUpperCase()} received`);
+  render();
+}
+
 function handleRemoteEvent(event) {
   if (!event) return;
   if (event.type === "cue:go") {
-    state.cueStates[event.cueId] = "go";
-    state.flashCueId = event.cueId;
-    addLog("GO", `${event.cueId.toUpperCase()} received`);
-    render();
+    applyCueEvent(event);
     window.setTimeout(() => {
       if (state.flashCueId === event.cueId) {
         state.flashCueId = null;
@@ -89,9 +94,10 @@ if (socket) {
   });
   socket.addEventListener("message", (message) => {
     const payload = JSON.parse(message.data);
-    if (payload.type === "state:init" || payload.type === "state:update") {
+    if (payload.type === "event") {
+      handleRemoteEvent(payload.event);
+    } else if (payload.type === "state:init" || payload.type === "state:update") {
       applyRemoteState(payload.state);
-      if (payload.type === "state:update") handleRemoteEvent(payload.event);
     }
   });
 }
@@ -114,7 +120,7 @@ function renderScenes() {
 
 function cueRows(items, type, idPrefix = type, interactive = true) {
   return items.map((item, index) => {
-    const id = `${idPrefix}-${index}`;
+    const id = item.cueId || `${idPrefix}-${index}`;
     const stateName = state.cueStates[id] || "standby";
     const name = item.description || item.item || item.file;
     const label = item.cue || item.type?.toUpperCase() || type.toUpperCase();
@@ -132,9 +138,14 @@ function cueRows(items, type, idPrefix = type, interactive = true) {
 }
 
 function callerView(scene) {
-  const allCues = [...scene.lighting.map((x) => ({ ...x, type: "lighting" })), ...scene.audio.map((x) => ({ ...x, type: "audio" })), ...scene.music.map((x) => ({ ...x, type: "music" })), ...scene.screens.map((x) => ({ ...x, type: "screens" }))];
+  const allCues = [
+    ...scene.lighting.map((x, index) => ({ ...x, type: "lighting", cueId: `lighting-${index}` })),
+    ...scene.audio.map((x, index) => ({ ...x, type: "audio", cueId: `audio-${index}` })),
+    ...scene.music.map((x, index) => ({ ...x, type: "music", cueId: `music-${index}` })),
+    ...scene.screens.map((x, index) => ({ ...x, type: "screens", cueId: `screens-${index}` }))
+  ];
   return `<div class="panel script-panel"><div class="panel-header"><h2>Script timeline</h2><span class="next-cue">NEXT CUE · ${scene.script.find((line) => line.cue)?.character || "—"}</span></div><div class="script-body">${scene.script.map((line) => `<div class="script-line ${line.cue ? "cue" : ""}"><span class="character">${line.character}${line.cue ? " · CUE LINE" : ""}</span>${line.line}</div>`).join("")}</div></div>
-    <div class="panel cue-panel"><div class="panel-header"><h2>Cue control</h2><span class="next-cue">${allCues.length} cues in scene</span></div><div class="panel-body"><div class="cue-list">${allCues.map((cue, index) => cueRows([cue], cue.type, `${cue.type}-${index}`)).join("")}</div></div></div>
+    <div class="panel cue-panel"><div class="panel-header"><h2>Cue control</h2><span class="next-cue">${allCues.length} cues in scene</span></div><div class="panel-body"><div class="cue-list">${allCues.map((cue) => cueRows([cue], cue.type, cue.cueId)).join("")}</div></div></div>
     ${statsPanel(scene)}${emergencyPanel()}`;
 }
 
