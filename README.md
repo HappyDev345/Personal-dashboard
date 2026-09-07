@@ -1,156 +1,215 @@
-# Bittersweet Production Dashboard
+# BITTERSWEET Production Dashboard
 
-A responsive production-control dashboard prototype for the live theatrical production of *Bittersweet*.
+> A realtime calling and technical-operations desk for the live musical
+> *Bittersweet*.
 
-The dashboard is designed for show callers, lighting and audio technicians, backstage crew, side-screen operators, and directors working from desktop or tablet devices.
+The dashboard gives the show caller and production teams one shared view of
+scenes, script, lighting, audio, music, screens, microphones, and backstage
+changes. It is designed for clear reading on laptops, tablets, and backstage
+stations.
 
-## Features
+## What it does
 
-- Scene navigation with automatic scene data loading
-- Role-specific operator views
-- Script timeline with highlighted cue lines
-- Lighting, audio, music, and screen cue controls
-- Standby and GO actions with a live cue log
-- Scene timer with pause and resume
-- Emergency controls:
-  - Hold show
-  - Skip cue
-  - Freeze screens
-- Audio technician mic grid with per-actor toggles
-- Backstage set-change checklist
-- Music and media playback controls
-- Responsive layout for tablets and desktop screens
-- Offline-friendly static prototype with no build step
+- Loads all 14 scenes from Acts 1–3.
+- Shows the script alongside a technical cue running order.
+- Displays lighting, audio, music, screen, microphone, and set information.
+- Synchronizes scene selection, cue GO/STBY, timer state, show hold, skipped
+  cues, screen freeze, and microphone state over WebSockets.
+- Provides read-only specialist dashboards for each production station.
+- Provides a private Luke administrator view with connected-user and backend
+  diagnostics.
+- Includes a local-only rehearsal mode with cue testing, scene looping,
+  transition speed, and persistent rehearsal notes.
+- Shows explicit online/offline connection status.
 
-## Getting Started
+## Roles and permissions
 
-No dependencies or build tools are required for the current prototype.
+| Role | Access |
+| --- | --- |
+| Show Caller | Change scenes, operate cues, timer, and emergency controls |
+| Luke / Admin | Full caller access plus administrator diagnostics |
+| Guest | View every dashboard, including Admin; cannot change show state |
+| Lighting Tech | Lighting cue feed and GO indicators |
+| Audio Tech | Mic grid, audio cues, and music information |
+| Backstage Crew | Set-change checklist and readiness status |
+| Side Screen Operator | Screen media and CYC information |
+| Director | Read-only production overview and notes |
 
-1. Clone or download the repository.
-2. Open `index.html` in a modern web browser.
-3. Select a scene from the left sidebar.
-4. Use the role selector to preview each operator interface.
+Only the authenticated caller and the username `luke` can broadcast control
+events. Permissions are enforced by the server as well as the browser.
 
-For the best local development experience, serve the folder with any static file server and open the resulting local URL.
+## Quick start
 
-## Free Cloud Hosting with Render
+### Local development
 
-Render can host this dashboard instead of GitHub Pages, which is useful when GitHub is blocked on the school network.
-
-### Deploy this branch as a Render Web Service
-
-1. Push the `render` branch to a GitHub repository.
-2. Sign in to [Render](https://render.com).
-3. Create a **New Web Service**.
-4. Connect the repository and choose the branch to deploy.
-5. Set the runtime to **Node**.
-6. Set the build command to `npm install`.
-7. Set the start command to `npm start`.
-8. Deploy the service and share the generated `onrender.com` URL.
-
-The Express server serves `index.html`, `styles.css`, and `app.js`, while its WebSocket server synchronizes scene changes, cue states, show hold, and mic toggles across connected browsers.
-
-### Test the server
+Requirements: Node.js 18 or newer.
 
 ```bash
 npm install
 npm start
 ```
 
-Open `http://localhost:3000` in two browser windows and trigger a cue in one window. Both windows should receive the updated cue state.
+Open <http://localhost:3000>. The server serves the dashboard and exposes the
+realtime WebSocket connection.
 
-The health endpoint is available at `/health`.
+For a static UI preview, open `index.html` directly in a browser. Static mode
+does not provide authentication or realtime synchronization.
 
-This first backend keeps state in server memory. Restarting the Render service resets the show state. Persistent storage and authentication should be added before production use.
+### Health check
 
-Free cloud services may have usage limits, sleep when inactive, or depend on internet access. For a live performance, keep a local backup copy or local server available.
+```text
+GET /health
+```
 
-### Configure authentication
+The endpoint returns the server health and is useful for Render monitoring.
 
-The server includes role-based login. On Render, add a `JWT_SECRET` environment variable and a `SHOW_USERS_JSON` secret containing users such as:
+## Render deployment
+
+Create a **Web Service** connected to this repository:
+
+| Setting | Value |
+| --- | --- |
+| Runtime | Node |
+| Build command | `npm install` |
+| Start command | `npm start` |
+
+Set these environment variables in Render:
+
+- `JWT_SECRET` — a long, random secret. Required in production.
+- `SHOW_USERS_JSON` — optional JSON array of additional or replacement users.
+- `PORT` — optional; Render supplies this automatically.
+
+Example `SHOW_USERS_JSON`:
 
 ```json
 [
-  { "username": "caller", "password": "*", "role": "caller", "displayName": "Show Caller" },
-  { "username": "luke", "password": "*", "role": "admin", "displayName": "Luke" },
-  { "username": "lighting", "password": "*", "role": "lighting", "displayName": "Lighting Tech" },
-  { "username": "guest", "password": "*", "role": "guest", "displayName": "Guest Viewer" }
+  {
+    "username": "caller",
+    "password": "change-me",
+    "role": "caller",
+    "displayName": "Show Caller"
+  },
+  {
+    "username": "lighting",
+    "password": "change-me",
+    "role": "lighting",
+    "displayName": "Lighting Tech"
+  }
 ]
 ```
 
-Add one object for each crew member. The `caller` and Luke's `admin` role can send cue, scene, and show-control events. Crew roles receive read-only dashboards. The `guest` role can switch between every dashboard view, including Admin, but cannot send control events. The `admin` role is restricted to the username `luke` and includes a private full-access administrator view with connected-station and backend diagnostics.
-
-## Project Structure
+The built-in `guest` account is added automatically if it is not present:
 
 ```text
-.
-├── index.html   # Application shell and layout
-├── styles.css   # Responsive visual design
-├── app.js       # Scene data, state, and dashboard interactions
-└── README.md    # Project documentation
+Username: guest
+Password: bittersweet
 ```
 
-## Roles
+Change or replace demo credentials before a public production run. The
+dashboard keeps live state in server memory, so a service restart resets the
+current cue state and timer.
 
-| Role | Primary tools |
-| --- | --- |
-| Show Caller | Script timeline, cue control, GO actions, emergency controls |
-| Lighting Tech | Lighting cue stack and GO indicators |
-| Audio Tech | Mic grid, audio cues, and music controls |
-| Backstage Crew | Set-change checklist and readiness status |
-| Side Screen Operator | Presentation/media controls and CYC presets |
-| Director | System overview, rehearsal notes, and emergency controls |
+## Using the dashboard
 
-## Data Model
+1. Sign in to the station account.
+2. Select a scene from the left navigation.
+3. Choose the appropriate station view from the top-right selector.
+4. In Caller view, use the technical timeline to see all upcoming cues and
+   set actions.
+5. Press **STBY** and **GO** for cues when ready.
+6. Use **HOLD SHOW**, **SKIP CUE**, or **FREEZE SCREENS** only when necessary.
 
-Scene data is currently represented in `app.js` and follows the production specification:
+### Rehearsal mode
 
-- Act and scene identifiers
-- Scene title
-- Microphone assignments
-- Lighting cues
-- Audio cues
-- Music items
-- Set-change notes
-- Screen media
-- Script excerpts
+Use the **LIVE / REHEARSAL** button in the top bar. Rehearsal mode:
 
-The current implementation uses local browser state for demonstration. A future production deployment can replace this with a Node.js/Express API, WebSocket cue synchronization, authentication, and persistent JSON or MongoDB storage.
+- Prevents local actions from being broadcast to connected stations.
+- Ignores incoming live cue and emergency events while active.
+- Allows local GO/STBY and emergency-control testing.
+- Supports 0.5×, 1×, and 2× transition timing.
+- Can loop the current scene after its cues are completed.
+- Saves rehearsal notes in the current browser.
 
-## Design
+Return to **LIVE** before operating the show. The top bar and rehearsal panel
+clearly identify the current mode.
 
-- Deep navy production interface
+## Data and project structure
+
+Scene data is normalized in `production-data.js` and loaded before `app.js`.
+Each scene contains:
+
+```text
+act, number, title, mics, lighting, audio, music,
+set, screens, script
+```
+
+Project files:
+
+```text
+index.html          Dashboard shell and login screen
+styles.css          Responsive production interface
+app.js              Browser state, rendering, controls, and WebSocket client
+production-data.js  Complete 14-scene production dataset
+server.js           Express API, authentication, WebSocket server, and state
+package.json        Node.js scripts and dependencies
+```
+
+## Realtime behavior
+
+The server maintains shared in-memory show state and broadcasts authorized
+events to connected clients. WebSocket tickets are short-lived and issued
+after JWT authentication; the JWT is not placed directly in the WebSocket URL.
+
+Important operational notes:
+
+- All connected browsers need network access to the deployed server.
+- Browser refreshes preserve authentication but reconnect the WebSocket.
+- Render restarts clear in-memory state.
+- Keep a local backup or offline copy available for performance use.
+
+## Troubleshooting
+
+**The dashboard says offline**
+
+- Confirm the Render service is running.
+- Open `/health`.
+- Check that the browser is using the deployed `https://` URL.
+- Verify `JWT_SECRET` is configured in Render.
+
+**A user cannot sign in**
+
+- Check the username, password, role, and `displayName` fields.
+- Ensure `SHOW_USERS_JSON` is valid JSON.
+- Remember that user changes require a service restart/redeploy.
+
+**Cues are not syncing**
+
+- Confirm every station is on the same deployed URL.
+- Check the online indicator on each station.
+- Sign out and sign back in to obtain a fresh session and WebSocket ticket.
+
+**The admin view is missing**
+
+- The private full-access Admin view is available only when signed in as
+  username `luke`.
+- The guest account can view Admin but cannot operate controls.
+
+## Design system
+
+- Deep navy interface for low-light production environments
 - Gold show branding and status accents
-- Purple lighting cues
-- Blue audio cues
-- Green music cues
-- Orange screen cues
-- High-contrast red emergency controls
-- Montserrat headings, Inter body text, and Georgia script text
-
-## Suggested Commit Messages
-
-Use small, descriptive commits that follow Conventional Commits:
-
-```text
-feat: create Bittersweet production dashboard shell
-feat: add scene navigation and cue control workflow
-feat: add role-specific operator views
-style: add responsive production dashboard theme
-docs: add dashboard setup and usage guide
-```
-
-If you are committing the current work as one commit, use:
-
-```text
-feat: build Bittersweet production dashboard prototype
-```
+- Purple lighting, blue audio, green music, and orange screen cues
+- Red emergency controls with high contrast
+- Montserrat headings, Inter interface text, and Georgia script text
 
 ## Roadmap
 
-- Add Node.js and Express backend
-- Add WebSocket cue synchronization
-- Add JWT authentication and permissions
-- Persist scenes and cue logs
-- Add real media playback and OSC output
-- Add offline fallback and latency/stress testing
+- Persist show state and cue logs beyond process restarts.
+- Add media asset validation and playback readiness checks.
+- Add exportable post-show cue and timing reports.
+- Add offline queueing and automated latency/stress tests.
+- Add optional OSC output for lighting desks.
+
+## License
+
+This project is private production software for the *Bittersweet* musical.

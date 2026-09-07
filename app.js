@@ -165,6 +165,7 @@ const scenes = window.productionScenes || fallbackScenes;
 
 const state = {
   sceneIndex: 0, role: "caller", timerSeconds: 0, timerPaused: false, hold: false, holdMessage: "", screensFrozen: false,
+  rehearsalMode: false, rehearsalLoop: false, rehearsalSpeed: 1, rehearsalNotes: localStorage.getItem("bittersweet-rehearsal-notes") || "",
   cueStates: {}, micStates: { Elimelech: true, Mahlon: true, Chilon: false, Naomi: true },
   flashCueId: null, user: null, socketConnected: false,
   adminData: null,
@@ -177,11 +178,12 @@ const roleNames = { caller: "SHOW CALLER", admin: "ADMIN", guest: "GUEST VIEWER"
 let socket = null;
 
 function sendEvent(event) {
-  if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(event));
+  if (!state.rehearsalMode && socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(event));
 }
 
 function applyRemoteState(remoteState) {
   if (!remoteState) return;
+  if (state.rehearsalMode) return;
   if (Number.isInteger(remoteState.sceneIndex)) state.sceneIndex = remoteState.sceneIndex;
   if (typeof remoteState.hold === "boolean") state.hold = remoteState.hold;
   if (Number.isInteger(remoteState.timerSeconds)) state.timerSeconds = remoteState.timerSeconds;
@@ -203,6 +205,7 @@ function applyCueEvent(event) {
 
 function handleRemoteEvent(event) {
   if (!event) return;
+  if (state.rehearsalMode && ["cue:go", "scene:select", "show:hold", "cue:skip", "screens:freeze"].includes(event.type)) return;
   if (event.type === "cue:go") {
     applyCueEvent(event);
     window.setTimeout(() => {
@@ -345,7 +348,16 @@ function callerView(scene, allowControls = canControl()) {
   ];
   return `<div class="panel script-panel"><div class="panel-header"><h2>Script timeline</h2><span class="next-cue">NEXT CUE · ${allCues.length ? escapeHtml(timelineCueName(allCues.find((cue) => !["go", "skipped"].includes(state.cueStates[cue.cueId] || "standby")) || allCues[0])) : "—"}</span></div><div class="script-body">${scene.script.map((line) => `<div class="script-line ${line.cue ? "cue" : ""}"><span class="character">${escapeHtml(line.character)}${line.cue ? " · CUE LINE" : ""}</span>${escapeHtml(line.line)}</div>`).join("")}</div>${scriptTimeline(scene, allCues)}</div>
     <div class="panel cue-panel"><div class="panel-header"><h2>${allowControls ? "Cue control" : "Cue overview"}</h2><span class="next-cue">${allCues.length} cues in scene</span></div><div class="panel-body"><div class="cue-list">${allCues.map((cue) => cueRows([cue], cue.type, cue.cueId, allowControls)).join("")}</div></div></div>
-    ${statsPanel(scene)}${allowControls ? emergencyPanel() : ""}`;
+    ${statsPanel(scene)}${allowControls ? rehearsalPanel() : ""}${allowControls ? emergencyPanel() : ""}`;
+}
+
+function rehearsalPanel() {
+  return `<div class="panel rehearsal-panel full-width"><div class="panel-header"><h2>Rehearsal mode</h2><span class="next-cue">${state.rehearsalMode ? "LOCAL TEST · NOT BROADCAST" : "LIVE MODE"}</span></div><div class="panel-body rehearsal-controls">
+    <button class="mode-button ${state.rehearsalMode ? "active" : ""}" data-rehearsal="toggle">${state.rehearsalMode ? "EXIT REHEARSAL" : "ENTER REHEARSAL"}</button>
+    <label class="rehearsal-option"><input type="checkbox" data-rehearsal="loop" ${state.rehearsalLoop ? "checked" : ""}> Loop current scene</label>
+    <label class="rehearsal-option">Transition speed <select data-rehearsal="speed"><option value="0.5" ${state.rehearsalSpeed === 0.5 ? "selected" : ""}>0.5× slow</option><option value="1" ${state.rehearsalSpeed === 1 ? "selected" : ""}>1× normal</option><option value="2" ${state.rehearsalSpeed === 2 ? "selected" : ""}>2× fast</option></select></label>
+    <textarea class="notes rehearsal-notes" data-rehearsal="notes" placeholder="Add rehearsal notes for this scene...">${escapeHtml(state.rehearsalNotes)}</textarea>
+  </div></div>`;
 }
 
 function statsPanel(scene) {
@@ -400,6 +412,14 @@ function nextCueId() {
 }
 
 function bindEvents() {
+  document.querySelectorAll("[data-rehearsal]").forEach((control) => control.addEventListener(control.type === "checkbox" ? "change" : control.tagName === "TEXTAREA" ? "input" : "click", () => {
+    const action = control.dataset.rehearsal;
+    if (action === "toggle") state.rehearsalMode = !state.rehearsalMode;
+    if (action === "loop") state.rehearsalLoop = control.checked;
+    if (action === "speed") state.rehearsalSpeed = Number(control.value);
+    if (action === "notes") { state.rehearsalNotes = control.value; localStorage.setItem("bittersweet-rehearsal-notes", state.rehearsalNotes); return; }
+    render();
+  }));
   document.querySelectorAll("[data-go]").forEach((button) => button.addEventListener("click", () => {
     state.cueStates[button.dataset.go] = "go";
     state.flashCueId = button.dataset.go;
@@ -408,7 +428,16 @@ function bindEvents() {
     $("#go-state").innerHTML = '<span class="go-dot" style="background:#9ad7ae"></span>GO FIRED';
     $("#sync-label").textContent = "Cue dispatched to all stations";
     render();
-    setTimeout(() => { $("#go-state").innerHTML = '<span class="go-dot"></span>STANDBY'; updateConnectionStatus(); }, 1600);
+    setTimeout(() => {
+      $("#go-state").innerHTML = '<span class="go-dot"></span>STANDBY';
+      if (state.rehearsalMode && state.rehearsalLoop && nextCueId() === null) {
+        state.cueStates = {};
+        addLog("SYSTEM", "Rehearsal scene loop restarted");
+        render();
+      } else {
+        updateConnectionStatus();
+      }
+    }, 1600 / state.rehearsalSpeed);
   }));
   document.querySelectorAll("[data-standby]").forEach((button) => button.addEventListener("click", () => { state.cueStates[button.dataset.standby] = "standby"; sendEvent({ type: "cue:standby", cueId: button.dataset.standby }); addLog("STBY", `${button.dataset.standby.toUpperCase()} standing by`); render(); }));
   document.querySelectorAll("[data-mic]").forEach((button) => button.addEventListener("click", () => { state.micStates[button.dataset.mic] = state.micStates[button.dataset.mic] === false; sendEvent({ type: "mic:toggle", actor: button.dataset.mic, value: state.micStates[button.dataset.mic] }); addLog("MIC", `${button.dataset.mic} mic ${state.micStates[button.dataset.mic] ? "on" : "off"}`); render(); }));
@@ -497,6 +526,12 @@ function render() {
   $("#alert-banner").hidden = !state.hold;
   $("#alert-copy").textContent = state.holdMessage || "All cue advancement is paused.";
   $("#resume-button").hidden = !state.hold || !["caller", "admin"].includes(state.user?.role);
+  const rehearsalToggle = $("#rehearsal-toggle");
+  if (rehearsalToggle) {
+    rehearsalToggle.textContent = state.rehearsalMode ? "REHEARSAL" : "LIVE";
+    rehearsalToggle.classList.toggle("active", state.rehearsalMode);
+    rehearsalToggle.setAttribute("aria-label", state.rehearsalMode ? "Exit rehearsal mode" : "Enter rehearsal mode");
+  }
   updateTimerButton();
   updateConnectionStatus();
   $("#dashboard").innerHTML = state.role === "caller" ? callerView(scene) : state.role === "admin" ? adminView() : specialistView(scene);
@@ -520,7 +555,17 @@ $("#role-select").addEventListener("change", (event) => { if (!["caller", "admin
 $("#resume-button").addEventListener("click", () => { state.hold = false; state.holdMessage = ""; sendEvent({ type: "show:hold", value: false, message: "" }); addLog("ALERT", "Show resumed"); render(); });
 $("#timer-button").addEventListener("click", () => {
   const nextPaused = !state.timerPaused;
+  if (state.rehearsalMode) {
+    state.timerPaused = nextPaused;
+    updateTimerButton();
+    return;
+  }
   sendEvent({ type: nextPaused ? "timer:pause" : "timer:resume" });
+});
+$("#rehearsal-toggle").addEventListener("click", () => {
+  state.rehearsalMode = !state.rehearsalMode;
+  addLog("SYSTEM", state.rehearsalMode ? "Rehearsal mode enabled; actions stay local" : "Live mode restored");
+  render();
 });
 $("#sign-out-button").addEventListener("click", () => {
   localStorage.removeItem("bittersweet-token");
