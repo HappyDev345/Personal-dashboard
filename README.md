@@ -71,9 +71,9 @@ The server includes role-based login. On Render, add a `JWT_SECRET` environment 
 
 ```json
 [
-  { "username": "caller", "password": "use-a-strong-password", "role": "caller", "displayName": "Show Caller" },
-  { "username": "luke", "password": "bittersweet", "role": "admin", "displayName": "Luke Kohlhoff" },
-  { "username": "lighting", "password": "use-a-strong-password", "role": "lighting", "displayName": "Lighting Tech" }
+  { "username": "caller", "password": "*", "role": "caller", "displayName": "Show Caller" },
+  { "username": "luke", "password": "*", "role": "admin", "displayName": "Luke" },
+  { "username": "lighting", "password": "*", "role": "lighting", "displayName": "Lighting Tech" }
 ]
 ```
 
