@@ -312,6 +312,30 @@ function canControl() {
   return state.user?.role === "caller" || (state.user?.role === "admin" && state.user?.username === "luke");
 }
 
+function timelineCueName(cue) {
+  if (cue.type === "screens") return `${cue.type.toUpperCase()} · ${cue.file || cue.description || "Screen cue"}`;
+  return cue.description || cue.title || cue.item || cue.file || "Technical cue";
+}
+
+function scriptTimeline(scene, allCues) {
+  const nextCue = allCues.find((cue) => !["go", "skipped"].includes(state.cueStates[cue.cueId] || "standby"));
+  const cueItems = allCues.map((cue) => {
+    const status = state.cueStates[cue.cueId] || "standby";
+    const label = cue.cue
+      ? (typeof cue.cue === "number" ? `${cue.type === "lighting" ? "LX" : cue.type.toUpperCase()}-${cue.cue}` : cue.cue)
+      : cue.type === "music" ? (cue.item || "MUSIC") : cue.type.toUpperCase();
+    return `<div class="timeline-cue ${status === "go" ? "complete" : ""} ${nextCue?.cueId === cue.cueId ? "up-next" : ""}">
+      <span class="cue-stripe ${cue.type}"></span>
+      <div><strong>${escapeHtml(label)}</strong><span>${escapeHtml(timelineCueName(cue))}</span></div>
+      <small>${nextCue?.cueId === cue.cueId ? "UP NEXT" : status.toUpperCase()}</small>
+    </div>`;
+  }).join("");
+  const setItems = scene.set.map((item) => `<div class="timeline-set"><span>SET</span><div>${escapeHtml(item)}</div></div>`).join("");
+  return `<div class="timeline-technical"><div class="timeline-heading"><strong>TECHNICAL CUE RUNNING ORDER</strong><span>${nextCue ? `UP NEXT · ${escapeHtml(timelineCueName(nextCue))}` : "ALL CUES COMPLETE"}</span></div>
+    <div class="timeline-cues">${cueItems || '<div class="empty-state">No technical cues assigned to this scene.</div>'}</div>
+    ${setItems ? `<div class="timeline-set-list"><div class="timeline-subheading">SET / BACKSTAGE ACTIONS</div>${setItems}</div>` : ""}</div>`;
+}
+
 function callerView(scene, allowControls = canControl()) {
   const allCues = [
     ...scene.lighting.map((x, index) => ({ ...x, type: "lighting", cueId: `lighting-${index}` })),
@@ -319,7 +343,7 @@ function callerView(scene, allowControls = canControl()) {
     ...scene.music.map((x, index) => ({ ...x, type: "music", cueId: `music-${index}` })),
     ...scene.screens.map((x, index) => ({ ...x, type: "screens", cueId: `screens-${index}` }))
   ];
-  return `<div class="panel script-panel"><div class="panel-header"><h2>Script timeline</h2><span class="next-cue">NEXT CUE · ${scene.script.find((line) => line.cue)?.character || "—"}</span></div><div class="script-body">${scene.script.map((line) => `<div class="script-line ${line.cue ? "cue" : ""}"><span class="character">${line.character}${line.cue ? " · CUE LINE" : ""}</span>${line.line}</div>`).join("")}</div></div>
+  return `<div class="panel script-panel"><div class="panel-header"><h2>Script timeline</h2><span class="next-cue">NEXT CUE · ${allCues.length ? escapeHtml(timelineCueName(allCues.find((cue) => !["go", "skipped"].includes(state.cueStates[cue.cueId] || "standby")) || allCues[0])) : "—"}</span></div><div class="script-body">${scene.script.map((line) => `<div class="script-line ${line.cue ? "cue" : ""}"><span class="character">${escapeHtml(line.character)}${line.cue ? " · CUE LINE" : ""}</span>${escapeHtml(line.line)}</div>`).join("")}</div>${scriptTimeline(scene, allCues)}</div>
     <div class="panel cue-panel"><div class="panel-header"><h2>${allowControls ? "Cue control" : "Cue overview"}</h2><span class="next-cue">${allCues.length} cues in scene</span></div><div class="panel-body"><div class="cue-list">${allCues.map((cue) => cueRows([cue], cue.type, cue.cueId, allowControls)).join("")}</div></div></div>
     ${statsPanel(scene)}${allowControls ? emergencyPanel() : ""}`;
 }
