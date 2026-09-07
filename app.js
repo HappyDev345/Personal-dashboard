@@ -33,7 +33,7 @@ const scenes = [
 ];
 
 const state = {
-  sceneIndex: 0, role: "caller", timerSeconds: 872, timerPaused: false, hold: false,
+  sceneIndex: 0, role: "caller", timerSeconds: 840, timerPaused: false, hold: false,
   cueStates: {}, micStates: { Elimelech: true, Mahlon: true, Chilon: false, Naomi: true },
   flashCueId: null, user: null,
   adminData: null,
@@ -205,8 +205,14 @@ function bindEvents() {
 
 function adminView() {
   const data = state.adminData || { uptimeSeconds: 0, clients: 0, users: [], lastEvent: null, recentEvents: [] };
+  const scene = currentScene();
   const uptime = `${Math.floor(data.uptimeSeconds / 3600)}h ${Math.floor((data.uptimeSeconds % 3600) / 60)}m`;
+  const stationStatus = ["lighting", "audio", "backstage", "screens"].map((role) => {
+    const connected = data.users.filter((user) => user.role === role).length;
+    return `<div class="system-status"><span class="status-light ${connected ? "online" : ""}"></span><div><strong>${role.toUpperCase()}</strong><small>${connected ? `${connected} station online` : "No station connected"}</small></div></div>`;
+  }).join("");
   return `<div class="panel full-width"><div class="panel-header"><h2>Administrator control room</h2><span class="next-cue">LUKE ONLY · FULL ACCESS</span></div><div class="panel-body"><div class="crew-notice admin-notice">Private technical monitor. This view is available only to Luke.</div><div class="stat-grid"><div class="stat"><strong>ONLINE</strong><span>backend status</span></div><div class="stat"><strong>${data.clients}</strong><span>connected clients</span></div><div class="stat"><strong>${data.users.length}</strong><span>logged-in stations</span></div><div class="stat"><strong>${uptime}</strong><span>server uptime</span></div></div></div></div>
+    <div class="panel full-width"><div class="panel-header"><h2>Production systems</h2><small>Scene ${scene.act}.${scene.number} · ${scene.title}</small></div><div class="panel-body"><div class="system-grid">${stationStatus}</div><div class="cue-summary"><div><strong>${scene.lighting.length}</strong><span>lighting cues</span></div><div><strong>${scene.audio.length}</strong><span>audio cues</span></div><div><strong>${scene.music.length}</strong><span>music items</span></div><div><strong>${scene.screens.length}</strong><span>screen cues</span></div></div></div></div>
     <div class="panel"><div class="panel-header"><h2>Connected stations</h2><small>Live WebSocket registry</small></div><div class="panel-body"><div class="user-list">${data.users.length ? data.users.map((user) => `<div class="user-row"><div><strong>${escapeHtml(user.displayName)}</strong><small>${escapeHtml(user.username)} · ${escapeHtml(user.role)}</small></div><span class="device-label">${escapeHtml(user.device)}</span></div>`).join("") : '<p class="empty-state">No connected stations.</p>'}</div></div>
     <div class="panel"><div class="panel-header"><h2>Backend diagnostics</h2><small>Live server telemetry</small></div><div class="panel-body"><div class="diagnostic-list"><div><span>WebSocket</span><strong>CONNECTED</strong></div><div><span>State store</span><strong>IN MEMORY</strong></div><div><span>Last event</span><strong>${escapeHtml(data.lastEvent ? data.lastEvent.type : "NONE")}</strong></div><div><span>Received</span><strong>${escapeHtml(data.lastEvent ? new Date(data.lastEvent.receivedAt).toLocaleTimeString() : "—")}</strong></div></div><div class="admin-log">${data.recentEvents.slice(0, 6).map((event) => `<div><strong>${escapeHtml(event.type)}</strong><span>${escapeHtml(new Date(event.receivedAt).toLocaleTimeString())}</span></div>`).join("") || '<p class="empty-state">No events recorded.</p>'}</div></div></div>`;
 }
@@ -226,6 +232,13 @@ function render() {
   $("#alert-copy").textContent = state.hold ? "All cue advancement is paused." : "";
   $("#dashboard").innerHTML = state.role === "caller" ? callerView(scene) : state.role === "admin" ? adminView() : specialistView(scene);
   renderScenes(); renderLog(); bindEvents();
+}
+
+function updateAdminOption(user) {
+  const option = $("#admin-role-option");
+  const isLuke = user?.username === "luke";
+  option.hidden = !isLuke;
+  option.disabled = !isLuke;
 }
 
 $("#role-select").addEventListener("change", (event) => { if (!["caller", "admin"].includes(state.user?.role || state.role)) return; state.role = event.target.value; addLog("SYSTEM", `${roleNames[state.role]} view selected`); render(); });
@@ -263,6 +276,7 @@ async function signIn(event) {
     localStorage.setItem("bittersweet-token", result.token);
     state.user = result.user;
     state.role = result.user.role;
+    updateAdminOption(result.user);
     $("#login-screen").hidden = true;
     $(".app-shell").style.visibility = "visible";
     $("#role-select").value = state.role;
@@ -286,6 +300,7 @@ if (window.location.protocol === "file:") {
       .then((result) => {
         state.user = result.user;
         state.role = result.user.role;
+        updateAdminOption(result.user);
         $("#login-screen").hidden = true;
         $(".app-shell").style.visibility = "visible";
         $("#role-select").value = state.role;
