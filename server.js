@@ -29,7 +29,8 @@ function loadUsers() {
   try {
     users = JSON.parse(process.env.SHOW_USERS_JSON);
   } catch (error) {
-    throw new Error(`SHOW_USERS_JSON must be valid JSON: ${error.message}`);
+    const position = Number.isInteger(error?.position) ? ` near character ${error.position}` : "";
+    throw new Error(`SHOW_USERS_JSON must be valid JSON${position}. Use double-quoted property names and string values, no comments, and no trailing commas. ${error.message}`);
   }
   if (!Array.isArray(users) || users.some((user) => !user || typeof user.username !== "string" || typeof user.password !== "string" || !["caller", "admin", "lighting", "audio", "backstage", "screens", "director", "guest"].includes(user.role) || typeof user.displayName !== "string")) {
     throw new Error("SHOW_USERS_JSON must be an array of users with username, password, role, and displayName.");

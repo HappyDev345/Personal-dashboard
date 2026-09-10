@@ -98,6 +98,12 @@ Example `SHOW_USERS_JSON`:
 ]
 ```
 
+The value must be strict JSON: use double quotes around every property name
+and string, do not add comments, and do not leave a trailing comma after the
+last property or user. Validate the complete value with a JSON validator
+before saving it in Render. `SHOW_USERS_JSON` replaces the configured user
+list; the built-in guest account is added automatically if it is missing.
+
 The built-in `guest` account is added automatically if it is not present:
 
 ```text
