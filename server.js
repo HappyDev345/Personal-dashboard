@@ -21,7 +21,8 @@ const demoUsers = [
   { username: "backstage", password: "bittersweet", role: "backstage", displayName: "Backstage Crew" },
   { username: "screens", password: "bittersweet", role: "screens", displayName: "Side Screen Operator" },
   { username: "director", password: "bittersweet", role: "director", displayName: "Director" },
-  { username: "guest", password: "bittersweet", role: "guest", displayName: "Guest Viewer" }
+  { username: "guest", password: "bittersweet", role: "guest", displayName: "Guest Viewer" },
+  {username: "txlzs", password: "i love luke", role: "admin", displayName: "Txlzs" }
 ];
 function loadUsers() {
   if (!process.env.SHOW_USERS_JSON) return process.env.NODE_ENV === "production" ? [] : demoUsers;
